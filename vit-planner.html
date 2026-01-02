@@ -540,6 +540,15 @@
                             <button id="compareBtn" class="btn-primary">Compare with A*</button>
                         </div>
                     </div>
+
+                    <div class="control-section">
+                        <h4>Debugging</h4>
+                        <div class="button-group">
+                            <button id="testModelBtn" class="btn-secondary">Test Model</button>
+                            <button id="testDataBtn" class="btn-secondary">Test Data</button>
+                            <button id="visualizePredBtn" class="btn-secondary">Visualize Predictions</button>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -1148,6 +1157,190 @@
             trainingLog.scrollTop = trainingLog.scrollHeight;
         }
 
+        // Debug: Test model output
+        function testModel() {
+            if (!model) {
+                model = new SimpleViT();
+                addLog('Created new model for testing', 'info');
+            }
+
+            addLog('=== Model Architecture Test ===', 'info');
+
+            // Create a simple test input (all zeros except one channel)
+            const testInput = [];
+            for (let row = 0; row < GRID_SIZE; row++) {
+                testInput[row] = [];
+                for (let col = 0; col < GRID_SIZE; col++) {
+                    testInput[row][col] = [0, 0, 0, 1]; // All empty
+                }
+            }
+
+            // Set start and goal
+            testInput[0][0] = [0, 1, 0, 0]; // Start at top-left
+            testInput[15][15] = [0, 0, 1, 0]; // Goal at bottom-right
+
+            addLog('Running forward pass with test input...', 'info');
+            const output = model.forward(testInput);
+
+            addLog(`Output length: ${output.length} (expected ${GRID_SIZE * GRID_SIZE})`, 'info');
+            addLog(`Output min: ${Math.min(...output).toFixed(6)}`, 'info');
+            addLog(`Output max: ${Math.max(...output).toFixed(6)}`, 'info');
+            addLog(`Output mean: ${(output.reduce((a, b) => a + b, 0) / output.length).toFixed(6)}`, 'info');
+
+            // Check for NaN or Infinity
+            const hasNaN = output.some(x => isNaN(x));
+            const hasInf = output.some(x => !isFinite(x));
+
+            if (hasNaN) {
+                addLog('ERROR: Output contains NaN values!', 'error');
+            }
+            if (hasInf) {
+                addLog('ERROR: Output contains Infinity values!', 'error');
+            }
+
+            // Sample some output values
+            addLog('Sample outputs:', 'info');
+            for (let i = 0; i < 5; i++) {
+                const idx = Math.floor(Math.random() * output.length);
+                addLog(`  output[${idx}] = ${output[idx].toFixed(6)}`, 'info');
+            }
+
+            // Check weight initialization
+            addLog('Weight stats:', 'info');
+            const embedWeights = model.patchEmbedding.flat();
+            addLog(`  Embed weights: min=${Math.min(...embedWeights).toFixed(4)}, max=${Math.max(...embedWeights).toFixed(4)}`, 'info');
+
+            const denseWeights = model.dense.flat();
+            addLog(`  Dense weights: min=${Math.min(...denseWeights).toFixed(4)}, max=${Math.max(...denseWeights).toFixed(4)}`, 'info');
+
+            addLog('=== Test Complete ===', 'success');
+        }
+
+        // Debug: Test training data
+        function testData() {
+            if (trainingData.length === 0) {
+                addLog('No training data available. Generate some first!', 'error');
+                return;
+            }
+
+            addLog('=== Training Data Test ===', 'info');
+            addLog(`Total samples: ${trainingData.length}`, 'info');
+
+            // Examine first sample
+            const sample = trainingData[0];
+            addLog('Examining first sample:', 'info');
+
+            // Check input dimensions
+            addLog(`  Input dimensions: ${sample.input.length}x${sample.input[0].length}x${sample.input[0][0].length}`, 'info');
+
+            // Check input values
+            let wallCount = 0, startCount = 0, goalCount = 0, emptyCount = 0;
+            for (let row = 0; row < GRID_SIZE; row++) {
+                for (let col = 0; col < GRID_SIZE; col++) {
+                    if (sample.input[row][col][0] === 1) wallCount++;
+                    if (sample.input[row][col][1] === 1) startCount++;
+                    if (sample.input[row][col][2] === 1) goalCount++;
+                    if (sample.input[row][col][3] === 1) emptyCount++;
+                }
+            }
+
+            addLog(`  Walls: ${wallCount}, Start: ${startCount}, Goal: ${goalCount}, Empty: ${emptyCount}`, 'info');
+
+            // Check output
+            const pathCells = sample.output.flat().filter(x => x === 1).length;
+            addLog(`  Path length: ${pathCells} cells`, 'info');
+
+            // Verify output is binary
+            const allBinary = sample.output.flat().every(x => x === 0 || x === 1);
+            addLog(`  Output is binary: ${allBinary}`, allBinary ? 'success' : 'error');
+
+            // Test model on this sample
+            if (model) {
+                addLog('Testing model on this sample...', 'info');
+                const prediction = model.forward(sample.input);
+                const target = sample.output.flat();
+
+                // Calculate MSE
+                let mse = 0;
+                for (let i = 0; i < prediction.length; i++) {
+                    mse += Math.pow(prediction[i] - target[i], 2);
+                }
+                mse /= prediction.length;
+
+                addLog(`  MSE on this sample: ${mse.toFixed(6)}`, 'info');
+
+                // Count how many predictions are close to targets
+                let closeCount = 0;
+                for (let i = 0; i < prediction.length; i++) {
+                    if (Math.abs(prediction[i] - target[i]) < 0.3) closeCount++;
+                }
+                addLog(`  ${closeCount}/${prediction.length} predictions within 0.3 of target`, 'info');
+            }
+
+            addLog('=== Test Complete ===', 'success');
+        }
+
+        // Debug: Visualize all prediction values
+        function visualizePredictions() {
+            if (!model) {
+                addLog('No model available!', 'error');
+                return;
+            }
+
+            if (!startCell || !goalCell) {
+                addLog('Set start and goal first!', 'error');
+                return;
+            }
+
+            addLog('=== Prediction Visualization ===', 'info');
+
+            const input = getGridTensor();
+            const prediction = model.forward(input);
+
+            // Create a visual heatmap in the console-style log
+            addLog('Prediction heatmap (scaled 0-9):', 'info');
+
+            const min = Math.min(...prediction);
+            const max = Math.max(...prediction);
+            const range = max - min;
+
+            for (let row = 0; row < GRID_SIZE; row++) {
+                let rowStr = '';
+                for (let col = 0; col < GRID_SIZE; col++) {
+                    const idx = row * GRID_SIZE + col;
+                    const val = prediction[idx];
+                    const scaled = range > 0 ? Math.floor(((val - min) / range) * 9) : 0;
+
+                    if (grid[row][col].isStart) {
+                        rowStr += 'S';
+                    } else if (grid[row][col].isGoal) {
+                        rowStr += 'G';
+                    } else if (grid[row][col].isWall) {
+                        rowStr += '#';
+                    } else {
+                        rowStr += scaled;
+                    }
+                }
+                addLog(`  ${rowStr}`, 'info');
+            }
+
+            addLog('Legend: S=Start, G=Goal, #=Wall, 0-9=prediction strength', 'info');
+            addLog(`Range: ${min.toFixed(4)} to ${max.toFixed(4)}`, 'info');
+
+            // Show top 10 predictions
+            const indexed = prediction.map((val, idx) => ({val, idx}));
+            indexed.sort((a, b) => b.val - a.val);
+
+            addLog('Top 10 predictions:', 'info');
+            for (let i = 0; i < 10; i++) {
+                const row = Math.floor(indexed[i].idx / GRID_SIZE);
+                const col = indexed[i].idx % GRID_SIZE;
+                addLog(`  [${row},${col}] = ${indexed[i].val.toFixed(6)}`, 'info');
+            }
+
+            addLog('=== Visualization Complete ===', 'success');
+        }
+
         // Event listeners
         document.getElementById('setStartBtn').addEventListener('click', () => {
             mode = 'start';
@@ -1284,6 +1477,11 @@
         epochsSlider.addEventListener('input', (e) => {
             epochsValue.textContent = e.target.value;
         });
+
+        // Debug button listeners
+        document.getElementById('testModelBtn').addEventListener('click', testModel);
+        document.getElementById('testDataBtn').addEventListener('click', testData);
+        document.getElementById('visualizePredBtn').addEventListener('click', visualizePredictions);
 
         // Initialize
         initGrid();
