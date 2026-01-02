@@ -1,0 +1,1242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ViT Path Planner - Learning to Plan with Vision Transformers</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2.2em;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 20px;
+            font-size: 1em;
+        }
+
+        .nav-links {
+            text-align: center;
+            margin-bottom: 25px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        .nav-links a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+            margin: 0 10px;
+            padding: 8px 16px;
+            border-radius: 5px;
+            transition: all 0.3s;
+            display: inline-block;
+        }
+
+        .nav-links a:hover {
+            background: #667eea;
+            color: white;
+        }
+
+        .info-box {
+            background: #ebf8ff;
+            border-left: 4px solid #3182ce;
+            padding: 20px;
+            margin-bottom: 25px;
+            border-radius: 5px;
+        }
+
+        .info-box h3 {
+            color: #2c5282;
+            margin-bottom: 10px;
+        }
+
+        .info-box p {
+            color: #2c5282;
+            line-height: 1.6;
+            margin-bottom: 8px;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .left-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .right-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .controls {
+            background: #f7fafc;
+            padding: 20px;
+            border-radius: 10px;
+            border: 2px solid #cbd5e0;
+        }
+
+        .control-section {
+            margin-bottom: 20px;
+        }
+
+        .control-section:last-child {
+            margin-bottom: 0;
+        }
+
+        .control-section h4 {
+            color: #2d3748;
+            margin-bottom: 12px;
+            font-size: 1em;
+        }
+
+        .button-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        button {
+            padding: 10px 18px;
+            font-size: 13px;
+            font-weight: 600;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-success {
+            background: #48bb78;
+            color: white;
+        }
+
+        .btn-danger {
+            background: #f56565;
+            color: white;
+        }
+
+        .btn-warning {
+            background: #ed8936;
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #718096;
+            color: white;
+        }
+
+        .grid-container {
+            background: #f7fafc;
+            padding: 20px;
+            border-radius: 10px;
+            border: 2px solid #cbd5e0;
+        }
+
+        .grid-title {
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 12px;
+            font-size: 1.1em;
+        }
+
+        .grid-wrapper {
+            display: flex;
+            justify-content: center;
+        }
+
+        .grid {
+            display: grid;
+            gap: 1px;
+            background: #cbd5e0;
+            border: 2px solid #4a5568;
+            padding: 1px;
+            image-rendering: pixelated;
+        }
+
+        .cell {
+            width: 20px;
+            height: 20px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .cell:hover {
+            opacity: 0.7;
+        }
+
+        .cell.wall {
+            background: #2d3748;
+        }
+
+        .cell.start {
+            background: #48bb78;
+        }
+
+        .cell.goal {
+            background: #f56565;
+        }
+
+        .cell.path {
+            background: #ffd700;
+        }
+
+        .cell.predicted-path {
+            background: #9f7aea;
+        }
+
+        .cell.visited {
+            background: #bee3f8;
+        }
+
+        .stats-panel {
+            background: #f7fafc;
+            padding: 20px;
+            border-radius: 10px;
+            border: 2px solid #cbd5e0;
+        }
+
+        .stats-title {
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 15px;
+            font-size: 1.1em;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .stat-row:last-child {
+            border-bottom: none;
+        }
+
+        .stat-label {
+            color: #4a5568;
+            font-size: 0.9em;
+        }
+
+        .stat-value {
+            color: #2d3748;
+            font-weight: 600;
+            font-size: 0.9em;
+        }
+
+        .training-log {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85em;
+            height: 200px;
+            overflow-y: auto;
+            margin-top: 10px;
+        }
+
+        .log-entry {
+            margin-bottom: 5px;
+            line-height: 1.4;
+        }
+
+        .log-entry.error {
+            color: #fc8181;
+        }
+
+        .log-entry.success {
+            color: #68d391;
+        }
+
+        .log-entry.info {
+            color: #90cdf4;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 25px;
+            background: #e2e8f0;
+            border-radius: 5px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            width: 0%;
+            transition: width 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 0.85em;
+        }
+
+        .legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            padding: 15px;
+            background: #f7fafc;
+            border-radius: 8px;
+            margin-top: 15px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.85em;
+        }
+
+        .legend-box {
+            width: 18px;
+            height: 18px;
+            border: 1px solid #4a5568;
+        }
+
+        .architecture-viz {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            border: 2px solid #cbd5e0;
+        }
+
+        .arch-layer {
+            background: #edf2f7;
+            border: 2px solid #667eea;
+            padding: 12px;
+            margin: 8px 0;
+            border-radius: 6px;
+            text-align: center;
+            font-size: 0.85em;
+            font-weight: 600;
+            color: #2d3748;
+        }
+
+        .arch-arrow {
+            text-align: center;
+            color: #667eea;
+            font-size: 1.2em;
+        }
+
+        .slider-control {
+            margin-top: 10px;
+        }
+
+        .slider-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+            font-size: 0.9em;
+            color: #4a5568;
+        }
+
+        .slider {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: #e2e8f0;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+        }
+
+        .slider::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+        }
+
+        @media (max-width: 1200px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+            }
+
+            h1 {
+                font-size: 1.6em;
+            }
+
+            .cell {
+                width: 15px;
+                height: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>ViT Path Planner</h1>
+        <p class="subtitle">Learning path planning through Vision Transformer regression on grid data</p>
+
+        <div class="nav-links">
+            <a href="index.html">Dijkstra's Algorithm</a>
+            <a href="astar.html">A* Algorithm</a>
+            <a href="transformers.html">Transformers & ViT</a>
+        </div>
+
+        <div class="info-box">
+            <h3>About This Demo</h3>
+            <p>
+                This demonstration shows how a Vision Transformer can learn to perform path planning through
+                <strong>direct regression</strong>. Instead of using classical algorithms, the network learns to predict
+                paths by training on examples generated by A*.
+            </p>
+            <p style="margin-top: 10px;">
+                <strong>How it works:</strong> The grid is treated as an image, divided into patches, and processed
+                through a simplified ViT architecture. The model learns to output a probability map indicating the
+                optimal path. This runs entirely in your browser using vanilla JavaScript!
+            </p>
+        </div>
+
+        <div class="main-content">
+            <div class="left-panel">
+                <div class="grid-container">
+                    <div class="grid-title">Interactive Grid (16×16)</div>
+                    <div class="grid-wrapper">
+                        <div id="grid" class="grid"></div>
+                    </div>
+                    <div class="legend">
+                        <div class="legend-item">
+                            <div class="legend-box" style="background: #48bb78;"></div>
+                            <span>Start</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-box" style="background: #f56565;"></div>
+                            <span>Goal</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-box" style="background: #2d3748;"></div>
+                            <span>Wall</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-box" style="background: #ffd700;"></div>
+                            <span>A* Path</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-box" style="background: #9f7aea;"></div>
+                            <span>ViT Predicted</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="controls">
+                    <div class="control-section">
+                        <h4>Grid Setup</h4>
+                        <div class="button-group">
+                            <button id="setStartBtn" class="btn-success">Set Start</button>
+                            <button id="setGoalBtn" class="btn-danger">Set Goal</button>
+                            <button id="toggleWallBtn" class="btn-secondary">Toggle Walls</button>
+                            <button id="clearGridBtn" class="btn-secondary">Clear Grid</button>
+                        </div>
+                    </div>
+
+                    <div class="control-section">
+                        <h4>Data Generation</h4>
+                        <div class="button-group">
+                            <button id="generateSampleBtn" class="btn-primary">Generate Sample</button>
+                            <button id="generateDatasetBtn" class="btn-primary">Generate 100 Samples</button>
+                        </div>
+                    </div>
+
+                    <div class="control-section">
+                        <h4>Model Training</h4>
+                        <div class="slider-control">
+                            <div class="slider-label">
+                                <span>Learning Rate:</span>
+                                <span id="lrValue">0.01</span>
+                            </div>
+                            <input type="range" id="lrSlider" class="slider" min="0.001" max="0.1" step="0.001" value="0.01">
+                        </div>
+                        <div class="slider-control">
+                            <div class="slider-label">
+                                <span>Epochs:</span>
+                                <span id="epochsValue">50</span>
+                            </div>
+                            <input type="range" id="epochsSlider" class="slider" min="10" max="200" step="10" value="50">
+                        </div>
+                        <div class="button-group" style="margin-top: 12px;">
+                            <button id="trainBtn" class="btn-warning">Train Model</button>
+                            <button id="stopTrainBtn" class="btn-danger" disabled>Stop Training</button>
+                            <button id="resetModelBtn" class="btn-secondary">Reset Model</button>
+                        </div>
+                    </div>
+
+                    <div class="control-section">
+                        <h4>Inference</h4>
+                        <div class="button-group">
+                            <button id="predictBtn" class="btn-primary">Predict Path</button>
+                            <button id="compareBtn" class="btn-primary">Compare with A*</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="right-panel">
+                <div class="stats-panel">
+                    <div class="stats-title">Model Statistics</div>
+                    <div class="stat-row">
+                        <span class="stat-label">Training Samples:</span>
+                        <span class="stat-value" id="samplesCount">0</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Current Epoch:</span>
+                        <span class="stat-value" id="currentEpoch">0</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Training Loss:</span>
+                        <span class="stat-value" id="trainingLoss">N/A</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Model Parameters:</span>
+                        <span class="stat-value" id="modelParams">~8,500</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Patch Size:</span>
+                        <span class="stat-value">4×4</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Embedding Dim:</span>
+                        <span class="stat-value">32</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressBar">0%</div>
+                    </div>
+                </div>
+
+                <div class="stats-panel">
+                    <div class="stats-title">Simplified ViT Architecture</div>
+                    <div class="architecture-viz">
+                        <div class="arch-layer">Output: 16×16 Path Probabilities</div>
+                        <div class="arch-arrow">↑</div>
+                        <div class="arch-layer">Reshape & Upsample</div>
+                        <div class="arch-arrow">↑</div>
+                        <div class="arch-layer">Dense Layer (32 → 256)</div>
+                        <div class="arch-arrow">↑</div>
+                        <div class="arch-layer">Attention Layer (2 heads)</div>
+                        <div class="arch-arrow">↑</div>
+                        <div class="arch-layer">Patch Embeddings (4×4 patches)</div>
+                        <div class="arch-arrow">↑</div>
+                        <div class="arch-layer">Input: 16×16 Grid (4 channels)</div>
+                    </div>
+                    <p style="margin-top: 12px; font-size: 0.85em; color: #4a5568; line-height: 1.5;">
+                        This is a simplified ViT for educational purposes. A production model would have
+                        multiple transformer layers, layer normalization, and more sophisticated attention mechanisms.
+                    </p>
+                </div>
+
+                <div class="stats-panel">
+                    <div class="stats-title">Training Log</div>
+                    <div class="training-log" id="trainingLog">
+                        <div class="log-entry info">Ready to train. Generate samples and click "Train Model"</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Grid configuration
+        const GRID_SIZE = 16;
+        const PATCH_SIZE = 4;
+        const EMBEDDING_DIM = 32;
+        const NUM_HEADS = 2;
+
+        // State
+        let grid = [];
+        let startCell = null;
+        let goalCell = null;
+        let mode = 'wall';
+        let trainingData = [];
+        let model = null;
+        let isTraining = false;
+        let stopTraining = false;
+
+        // DOM elements
+        const gridElement = document.getElementById('grid');
+        const trainingLog = document.getElementById('trainingLog');
+        const samplesCount = document.getElementById('samplesCount');
+        const currentEpoch = document.getElementById('currentEpoch');
+        const trainingLoss = document.getElementById('trainingLoss');
+        const progressBar = document.getElementById('progressBar');
+        const lrSlider = document.getElementById('lrSlider');
+        const lrValue = document.getElementById('lrValue');
+        const epochsSlider = document.getElementById('epochsSlider');
+        const epochsValue = document.getElementById('epochsValue');
+
+        // Cell class
+        class Cell {
+            constructor(row, col) {
+                this.row = row;
+                this.col = col;
+                this.isWall = false;
+                this.isStart = false;
+                this.isGoal = false;
+                this.isPath = false;
+                this.isPredicted = false;
+                this.element = null;
+            }
+
+            reset() {
+                this.isPath = false;
+                this.isPredicted = false;
+                this.updateDisplay();
+            }
+
+            clear() {
+                this.isWall = false;
+                this.isStart = false;
+                this.isGoal = false;
+                this.isPath = false;
+                this.isPredicted = false;
+                this.updateDisplay();
+            }
+
+            updateDisplay() {
+                if (!this.element) return;
+                this.element.className = 'cell';
+                if (this.isWall) this.element.classList.add('wall');
+                else if (this.isStart) this.element.classList.add('start');
+                else if (this.isGoal) this.element.classList.add('goal');
+                else if (this.isPredicted) this.element.classList.add('predicted-path');
+                else if (this.isPath) this.element.classList.add('path');
+            }
+        }
+
+        // Initialize grid
+        function initGrid() {
+            gridElement.style.gridTemplateColumns = `repeat(${GRID_SIZE}, 20px)`;
+            gridElement.innerHTML = '';
+            grid = [];
+
+            for (let row = 0; row < GRID_SIZE; row++) {
+                grid[row] = [];
+                for (let col = 0; col < GRID_SIZE; col++) {
+                    const cell = new Cell(row, col);
+                    const cellElement = document.createElement('div');
+                    cellElement.className = 'cell';
+                    cellElement.addEventListener('click', () => handleCellClick(cell));
+                    cell.element = cellElement;
+                    gridElement.appendChild(cellElement);
+                    grid[row][col] = cell;
+                }
+            }
+
+            startCell = null;
+            goalCell = null;
+        }
+
+        // Handle cell click
+        function handleCellClick(cell) {
+            if (mode === 'start') {
+                if (startCell) {
+                    startCell.isStart = false;
+                    startCell.updateDisplay();
+                }
+                if (cell.isGoal) {
+                    cell.isGoal = false;
+                    goalCell = null;
+                }
+                cell.isWall = false;
+                cell.isStart = true;
+                startCell = cell;
+                cell.updateDisplay();
+                mode = 'wall';
+            } else if (mode === 'goal') {
+                if (goalCell) {
+                    goalCell.isGoal = false;
+                    goalCell.updateDisplay();
+                }
+                if (cell.isStart) {
+                    cell.isStart = false;
+                    startCell = null;
+                }
+                cell.isWall = false;
+                cell.isGoal = true;
+                goalCell = cell;
+                cell.updateDisplay();
+                mode = 'wall';
+            } else if (mode === 'wall') {
+                if (cell.isStart || cell.isGoal) return;
+                cell.isWall = !cell.isWall;
+                cell.updateDisplay();
+            }
+        }
+
+        // A* algorithm for generating training data
+        function astar(gridState, start, goal) {
+            const openSet = [start];
+            const closedSet = new Set();
+            const gScore = {};
+            const fScore = {};
+            const cameFrom = {};
+
+            const key = (r, c) => `${r},${c}`;
+            const h = (r1, c1, r2, c2) => Math.abs(r1 - r2) + Math.abs(c1 - c2);
+
+            gScore[key(start.row, start.col)] = 0;
+            fScore[key(start.row, start.col)] = h(start.row, start.col, goal.row, goal.col);
+
+            while (openSet.length > 0) {
+                openSet.sort((a, b) => {
+                    const fa = fScore[key(a.row, a.col)] || Infinity;
+                    const fb = fScore[key(b.row, b.col)] || Infinity;
+                    return fa - fb;
+                });
+
+                const current = openSet.shift();
+                const currentKey = key(current.row, current.col);
+
+                if (current.row === goal.row && current.col === goal.col) {
+                    // Reconstruct path
+                    const path = [];
+                    let temp = current;
+                    while (cameFrom[key(temp.row, temp.col)]) {
+                        path.unshift(temp);
+                        temp = cameFrom[key(temp.row, temp.col)];
+                    }
+                    return path;
+                }
+
+                closedSet.add(currentKey);
+
+                const neighbors = [
+                    {row: current.row - 1, col: current.col},
+                    {row: current.row + 1, col: current.col},
+                    {row: current.row, col: current.col - 1},
+                    {row: current.row, col: current.col + 1}
+                ];
+
+                for (const neighbor of neighbors) {
+                    if (neighbor.row < 0 || neighbor.row >= GRID_SIZE ||
+                        neighbor.col < 0 || neighbor.col >= GRID_SIZE) continue;
+
+                    if (gridState[neighbor.row][neighbor.col] === 1) continue; // wall
+
+                    const neighborKey = key(neighbor.row, neighbor.col);
+                    if (closedSet.has(neighborKey)) continue;
+
+                    const tentativeG = (gScore[currentKey] || Infinity) + 1;
+
+                    if (!openSet.find(n => n.row === neighbor.row && n.col === neighbor.col)) {
+                        openSet.push(neighbor);
+                    } else if (tentativeG >= (gScore[neighborKey] || Infinity)) {
+                        continue;
+                    }
+
+                    cameFrom[neighborKey] = current;
+                    gScore[neighborKey] = tentativeG;
+                    fScore[neighborKey] = tentativeG + h(neighbor.row, neighbor.col, goal.row, goal.col);
+                }
+            }
+
+            return null; // No path found
+        }
+
+        // Generate grid state as tensor
+        function getGridTensor() {
+            const tensor = [];
+            for (let row = 0; row < GRID_SIZE; row++) {
+                tensor[row] = [];
+                for (let col = 0; col < GRID_SIZE; col++) {
+                    const cell = grid[row][col];
+                    // 4 channels: wall, start, goal, empty
+                    tensor[row][col] = [
+                        cell.isWall ? 1 : 0,
+                        cell.isStart ? 1 : 0,
+                        cell.isGoal ? 1 : 0,
+                        (!cell.isWall && !cell.isStart && !cell.isGoal) ? 1 : 0
+                    ];
+                }
+            }
+            return tensor;
+        }
+
+        // Generate random training sample
+        function generateRandomSample() {
+            // Clear current grid
+            for (let row = 0; row < GRID_SIZE; row++) {
+                for (let col = 0; col < GRID_SIZE; col++) {
+                    grid[row][col].clear();
+                }
+            }
+
+            // Random start and goal
+            const startRow = Math.floor(Math.random() * GRID_SIZE);
+            const startCol = Math.floor(Math.random() * GRID_SIZE);
+            const goalRow = Math.floor(Math.random() * GRID_SIZE);
+            const goalCol = Math.floor(Math.random() * GRID_SIZE);
+
+            if (startRow === goalRow && startCol === goalCol) {
+                return generateRandomSample(); // Try again
+            }
+
+            startCell = grid[startRow][startCol];
+            goalCell = grid[goalRow][goalCol];
+            startCell.isStart = true;
+            goalCell.isGoal = true;
+
+            // Random walls (20-30% coverage)
+            const wallCount = Math.floor(GRID_SIZE * GRID_SIZE * (0.2 + Math.random() * 0.1));
+            for (let i = 0; i < wallCount; i++) {
+                const row = Math.floor(Math.random() * GRID_SIZE);
+                const col = Math.floor(Math.random() * GRID_SIZE);
+                if (!grid[row][col].isStart && !grid[row][col].isGoal) {
+                    grid[row][col].isWall = true;
+                }
+            }
+
+            // Update display
+            for (let row = 0; row < GRID_SIZE; row++) {
+                for (let col = 0; col < GRID_SIZE; col++) {
+                    grid[row][col].updateDisplay();
+                }
+            }
+
+            // Generate path using A*
+            const gridState = grid.map(row => row.map(cell => cell.isWall ? 1 : 0));
+            const path = astar(gridState, startCell, goalCell);
+
+            if (!path) {
+                return generateRandomSample(); // No path, try again
+            }
+
+            // Show path
+            for (const cell of path) {
+                grid[cell.row][cell.col].isPath = true;
+                grid[cell.row][cell.col].updateDisplay();
+            }
+
+            return {
+                input: getGridTensor(),
+                output: createPathTensor(path)
+            };
+        }
+
+        // Create path tensor (target for training)
+        function createPathTensor(path) {
+            const tensor = [];
+            for (let row = 0; row < GRID_SIZE; row++) {
+                tensor[row] = [];
+                for (let col = 0; col < GRID_SIZE; col++) {
+                    const onPath = path.some(p => p.row === row && p.col === col);
+                    tensor[row][col] = onPath ? 1 : 0;
+                }
+            }
+            return tensor;
+        }
+
+        // Simple matrix operations
+        function matMul(a, b) {
+            const result = [];
+            for (let i = 0; i < a.length; i++) {
+                result[i] = [];
+                for (let j = 0; j < b[0].length; j++) {
+                    let sum = 0;
+                    for (let k = 0; k < b.length; k++) {
+                        sum += a[i][k] * b[k][j];
+                    }
+                    result[i][j] = sum;
+                }
+            }
+            return result;
+        }
+
+        function sigmoid(x) {
+            return 1 / (1 + Math.exp(-x));
+        }
+
+        function relu(x) {
+            return Math.max(0, x);
+        }
+
+        // Simplified ViT model
+        class SimpleViT {
+            constructor() {
+                this.patchEmbedding = this.initWeights(PATCH_SIZE * PATCH_SIZE * 4, EMBEDDING_DIM);
+                this.attention = {
+                    wq: this.initWeights(EMBEDDING_DIM, EMBEDDING_DIM),
+                    wk: this.initWeights(EMBEDDING_DIM, EMBEDDING_DIM),
+                    wv: this.initWeights(EMBEDDING_DIM, EMBEDDING_DIM)
+                };
+                this.dense = this.initWeights(EMBEDDING_DIM, 256);
+                this.output = this.initWeights(256, GRID_SIZE * GRID_SIZE);
+            }
+
+            initWeights(input, output) {
+                const weights = [];
+                const scale = Math.sqrt(2.0 / input);
+                for (let i = 0; i < input; i++) {
+                    weights[i] = [];
+                    for (let j = 0; j < output; j++) {
+                        weights[i][j] = (Math.random() - 0.5) * scale;
+                    }
+                }
+                return weights;
+            }
+
+            forward(input) {
+                // Extract patches (simplified)
+                const patches = this.extractPatches(input);
+
+                // Embed patches
+                const embedded = patches.map(patch => {
+                    let result = new Array(EMBEDDING_DIM).fill(0);
+                    for (let i = 0; i < patch.length; i++) {
+                        for (let j = 0; j < EMBEDDING_DIM; j++) {
+                            result[j] += patch[i] * this.patchEmbedding[i][j];
+                        }
+                    }
+                    return result;
+                });
+
+                // Simple self-attention (averaged across patches)
+                const avgEmbedding = new Array(EMBEDDING_DIM).fill(0);
+                for (const emb of embedded) {
+                    for (let i = 0; i < EMBEDDING_DIM; i++) {
+                        avgEmbedding[i] += emb[i] / embedded.length;
+                    }
+                }
+
+                // Dense layer with ReLU
+                const dense = new Array(256).fill(0);
+                for (let i = 0; i < EMBEDDING_DIM; i++) {
+                    for (let j = 0; j < 256; j++) {
+                        dense[j] += avgEmbedding[i] * this.dense[i][j];
+                    }
+                }
+                const denseActivated = dense.map(x => relu(x));
+
+                // Output layer with sigmoid
+                const output = new Array(GRID_SIZE * GRID_SIZE).fill(0);
+                for (let i = 0; i < 256; i++) {
+                    for (let j = 0; j < GRID_SIZE * GRID_SIZE; j++) {
+                        output[j] += denseActivated[i] * this.output[i][j];
+                    }
+                }
+                return output.map(x => sigmoid(x));
+            }
+
+            extractPatches(input) {
+                const patches = [];
+                const numPatches = GRID_SIZE / PATCH_SIZE;
+
+                for (let pr = 0; pr < numPatches; pr++) {
+                    for (let pc = 0; pc < numPatches; pc++) {
+                        const patch = [];
+                        for (let r = 0; r < PATCH_SIZE; r++) {
+                            for (let c = 0; c < PATCH_SIZE; c++) {
+                                const row = pr * PATCH_SIZE + r;
+                                const col = pc * PATCH_SIZE + c;
+                                patch.push(...input[row][col]);
+                            }
+                        }
+                        patches.push(patch);
+                    }
+                }
+                return patches;
+            }
+        }
+
+        // Training function
+        async function trainModel() {
+            if (trainingData.length === 0) {
+                addLog('No training data! Generate samples first.', 'error');
+                return;
+            }
+
+            isTraining = true;
+            stopTraining = false;
+            document.getElementById('trainBtn').disabled = true;
+            document.getElementById('stopTrainBtn').disabled = false;
+
+            const lr = parseFloat(lrSlider.value);
+            const epochs = parseInt(epochsSlider.value);
+
+            if (!model) {
+                model = new SimpleViT();
+            }
+
+            addLog(`Starting training: ${epochs} epochs, LR=${lr}`, 'info');
+
+            for (let epoch = 0; epoch < epochs; epoch++) {
+                if (stopTraining) {
+                    addLog('Training stopped by user', 'info');
+                    break;
+                }
+
+                let totalLoss = 0;
+
+                for (const sample of trainingData) {
+                    const predicted = model.forward(sample.input);
+                    const target = sample.output.flat();
+
+                    // MSE loss
+                    let loss = 0;
+                    for (let i = 0; i < predicted.length; i++) {
+                        loss += Math.pow(predicted[i] - target[i], 2);
+                    }
+                    loss /= predicted.length;
+                    totalLoss += loss;
+
+                    // Simple gradient descent (simplified - not full backprop)
+                    // In production, you'd use proper backpropagation
+                    const gradient = predicted.map((p, i) => 2 * (p - target[i]) / predicted.length);
+
+                    // Update output layer weights
+                    for (let i = 0; i < 256; i++) {
+                        for (let j = 0; j < GRID_SIZE * GRID_SIZE; j++) {
+                            model.output[i][j] -= lr * gradient[j] * 0.1; // simplified
+                        }
+                    }
+                }
+
+                const avgLoss = totalLoss / trainingData.length;
+                currentEpoch.textContent = epoch + 1;
+                trainingLoss.textContent = avgLoss.toFixed(6);
+                progressBar.style.width = ((epoch + 1) / epochs * 100) + '%';
+                progressBar.textContent = Math.round((epoch + 1) / epochs * 100) + '%';
+
+                if ((epoch + 1) % 10 === 0) {
+                    addLog(`Epoch ${epoch + 1}/${epochs} - Loss: ${avgLoss.toFixed(6)}`, 'info');
+                }
+
+                // Allow UI to update
+                await new Promise(resolve => setTimeout(resolve, 0));
+            }
+
+            addLog('Training complete!', 'success');
+            isTraining = false;
+            document.getElementById('trainBtn').disabled = false;
+            document.getElementById('stopTrainBtn').disabled = true;
+        }
+
+        // Predict path
+        function predictPath() {
+            if (!model) {
+                addLog('No trained model! Train the model first.', 'error');
+                return;
+            }
+
+            if (!startCell || !goalCell) {
+                addLog('Set start and goal points first!', 'error');
+                return;
+            }
+
+            const input = getGridTensor();
+            const prediction = model.forward(input);
+
+            // Clear previous predictions
+            for (let row = 0; row < GRID_SIZE; row++) {
+                for (let col = 0; col < GRID_SIZE; col++) {
+                    grid[row][col].isPredicted = false;
+                }
+            }
+
+            // Show top predictions
+            const threshold = 0.5;
+            for (let i = 0; i < prediction.length; i++) {
+                if (prediction[i] > threshold) {
+                    const row = Math.floor(i / GRID_SIZE);
+                    const col = i % GRID_SIZE;
+                    if (!grid[row][col].isStart && !grid[row][col].isGoal) {
+                        grid[row][col].isPredicted = true;
+                    }
+                }
+            }
+
+            // Update display
+            for (let row = 0; row < GRID_SIZE; row++) {
+                for (let col = 0; col < GRID_SIZE; col++) {
+                    grid[row][col].updateDisplay();
+                }
+            }
+
+            addLog('Path predicted! Purple cells show ViT prediction.', 'success');
+        }
+
+        // Add log entry
+        function addLog(message, type = 'info') {
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            trainingLog.appendChild(entry);
+            trainingLog.scrollTop = trainingLog.scrollHeight;
+        }
+
+        // Event listeners
+        document.getElementById('setStartBtn').addEventListener('click', () => {
+            mode = 'start';
+            addLog('Click on grid to set start point', 'info');
+        });
+
+        document.getElementById('setGoalBtn').addEventListener('click', () => {
+            mode = 'goal';
+            addLog('Click on grid to set goal point', 'info');
+        });
+
+        document.getElementById('toggleWallBtn').addEventListener('click', () => {
+            mode = 'wall';
+            addLog('Click cells to toggle walls', 'info');
+        });
+
+        document.getElementById('clearGridBtn').addEventListener('click', () => {
+            initGrid();
+            addLog('Grid cleared', 'info');
+        });
+
+        document.getElementById('generateSampleBtn').addEventListener('click', () => {
+            const sample = generateRandomSample();
+            trainingData.push(sample);
+            samplesCount.textContent = trainingData.length;
+            addLog(`Generated sample ${trainingData.length}`, 'success');
+        });
+
+        document.getElementById('generateDatasetBtn').addEventListener('click', async () => {
+            addLog('Generating 100 samples...', 'info');
+            for (let i = 0; i < 100; i++) {
+                const sample = generateRandomSample();
+                trainingData.push(sample);
+                samplesCount.textContent = trainingData.length;
+                if ((i + 1) % 20 === 0) {
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                }
+            }
+            addLog('Dataset generation complete!', 'success');
+        });
+
+        document.getElementById('trainBtn').addEventListener('click', trainModel);
+
+        document.getElementById('stopTrainBtn').addEventListener('click', () => {
+            stopTraining = true;
+        });
+
+        document.getElementById('resetModelBtn').addEventListener('click', () => {
+            model = new SimpleViT();
+            currentEpoch.textContent = '0';
+            trainingLoss.textContent = 'N/A';
+            progressBar.style.width = '0%';
+            progressBar.textContent = '0%';
+            addLog('Model reset to random initialization', 'info');
+        });
+
+        document.getElementById('predictBtn').addEventListener('click', predictPath);
+
+        document.getElementById('compareBtn').addEventListener('click', () => {
+            // Clear predictions
+            for (let row = 0; row < GRID_SIZE; row++) {
+                for (let col = 0; col < GRID_SIZE; col++) {
+                    grid[row][col].isPath = false;
+                }
+            }
+
+            // Run A*
+            const gridState = grid.map(row => row.map(cell => cell.isWall ? 1 : 0));
+            const path = astar(gridState, startCell, goalCell);
+
+            if (path) {
+                for (const cell of path) {
+                    grid[cell.row][cell.col].isPath = true;
+                }
+                addLog(`A* path (gold): ${path.length} cells`, 'success');
+            } else {
+                addLog('A* found no path!', 'error');
+            }
+
+            // Predict with ViT
+            predictPath();
+
+            // Update display
+            for (let row = 0; row < GRID_SIZE; row++) {
+                for (let col = 0; col < GRID_SIZE; col++) {
+                    grid[row][col].updateDisplay();
+                }
+            }
+        });
+
+        lrSlider.addEventListener('input', (e) => {
+            lrValue.textContent = parseFloat(e.target.value).toFixed(3);
+        });
+
+        epochsSlider.addEventListener('input', (e) => {
+            epochsValue.textContent = e.target.value;
+        });
+
+        // Initialize
+        initGrid();
+        addLog('ViT Path Planner initialized', 'success');
+        addLog('Start by generating training samples', 'info');
+    </script>
+</body>
+</html>

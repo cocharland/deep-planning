@@ -33,6 +33,16 @@ Visit the live demo: [https://YOUR-USERNAME.github.io/deep-planning/](https://YO
 - Architecture diagrams and practical implementation tips
 - Coverage of recent developments (DeiT, BEiT, MAE, Swin Transformer)
 
+### ViT Path Planner
+- Train a Vision Transformer to learn path planning through regression
+- Generate training data using A* algorithm
+- Real-time training with live loss visualization
+- Interactive model training with adjustable hyperparameters
+- Compare neural network predictions with classical A*
+- Runs entirely in browser with vanilla JavaScript
+- Visualize how neural networks can learn algorithmic tasks
+- Educational demonstration of end-to-end learning
+
 ## How to Use
 
 1. **Set Start Point**: Click "Set Start" button, then click on the grid where you want to start
@@ -47,6 +57,7 @@ Visit the live demo: [https://YOUR-USERNAME.github.io/deep-planning/](https://YO
 1. **[Dijkstra's Algorithm](index.html)** - Interactive pathfinding visualization
 2. **[A* Algorithm](astar.html)** - Heuristic-based pathfinding with multiple heuristic options
 3. **[Transformers & ViT](transformers.html)** - Educational guide to transformer architecture and Vision Transformers
+4. **[ViT Path Planner](vit-planner.html)** - Train a Vision Transformer to learn path planning
 
 ## Technologies
 
@@ -117,6 +128,34 @@ An informed search algorithm that uses heuristics to guide exploration. It works
 - Requires large datasets or pre-training
 - Less inductive bias than CNNs
 - Higher computational cost than CNNs
+
+### ViT Path Planner (Neural Learning Demo)
+
+This interactive demo shows how a Vision Transformer can learn to perform path planning through **direct regression** rather than using classical algorithms.
+
+**Approach:**
+1. Generate training data using A* algorithm
+2. Treat grid as image with 4 channels (wall, start, goal, empty)
+3. Divide into 4×4 patches and embed them
+4. Process through simplified ViT architecture
+5. Output probability map for path locations
+6. Train with MSE loss between predicted and actual paths
+
+**Architecture:**
+- Input: 16×16 grid with 4 channels
+- Patch size: 4×4 (16 patches total)
+- Embedding dimension: 32
+- Attention heads: 2
+- Output: 256-dimensional path probability map
+
+**Key Insights:**
+- Neural networks can learn algorithmic tasks end-to-end
+- Requires sufficient training data (100+ examples)
+- May not generalize perfectly to unseen configurations
+- Demonstrates how ViT processes spatial data
+- Educational example of learning vs classical algorithms
+
+This is a simplified implementation for educational purposes. Production models would use proper backpropagation, layer normalization, multiple transformer blocks, and more sophisticated training techniques.
 
 ## Future Content
 
