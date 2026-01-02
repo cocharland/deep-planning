@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dijkstra's Pathfinding Visualization</title>
+    <title>A* Pathfinding Visualization</title>
     <style>
         * {
             margin: 0;
@@ -133,6 +133,30 @@
             opacity: 0.5;
             cursor: not-allowed;
             transform: none !important;
+        }
+
+        .heuristic-selector {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 15px;
+            background: white;
+            border-radius: 5px;
+            border: 2px solid #667eea;
+        }
+
+        .heuristic-selector label {
+            font-weight: 600;
+            color: #333;
+            font-size: 14px;
+        }
+
+        .heuristic-selector select {
+            padding: 8px 12px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 14px;
+            cursor: pointer;
         }
 
         .grid-container {
@@ -269,6 +293,12 @@
             font-size: 1.1em;
         }
 
+        .instructions p {
+            color: #744210;
+            margin-bottom: 10px;
+            line-height: 1.5;
+        }
+
         .instructions ol {
             margin-left: 20px;
             color: #744210;
@@ -277,33 +307,105 @@
         .instructions li {
             margin-bottom: 5px;
         }
+
+        .algorithm-info {
+            background: #f0fff4;
+            border-left: 4px solid #48bb78;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+        }
+
+        .algorithm-info h3 {
+            color: #22543d;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+
+        .algorithm-info p {
+            color: #22543d;
+            line-height: 1.6;
+            margin-bottom: 8px;
+        }
+
+        .algorithm-info code {
+            background: #c6f6d5;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+        }
+
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            flex-wrap: wrap;
+            gap: 15px;
+            padding: 15px;
+            background: #f7fafc;
+            border-radius: 10px;
+            margin-top: 15px;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Dijkstra's Pathfinding Algorithm</h1>
-        <p class="description">Interactive visualization of the shortest path algorithm</p>
+        <h1>A* (A-Star) Pathfinding Algorithm</h1>
+        <p class="description">Intelligent shortest path algorithm using heuristics</p>
 
         <div class="nav-links">
-            <a href="astar.html">A* Algorithm →</a>
+            <a href="index.html">← Dijkstra's Algorithm</a>
+        </div>
+
+        <div class="algorithm-info">
+            <h3>About A* Algorithm</h3>
+            <p>A* is an informed search algorithm that uses a heuristic function to guide its search. Unlike Dijkstra's, which explores equally in all directions, A* prioritizes paths that appear to be leading toward the goal.</p>
+            <p><strong>Cost Function:</strong> <code>f(n) = g(n) + h(n)</code></p>
+            <p>Where <code>g(n)</code> is the actual distance from start, and <code>h(n)</code> is the estimated distance to goal (heuristic).</p>
         </div>
 
         <div class="instructions">
             <h3>How to Use:</h3>
             <ol>
+                <li>Select a heuristic function (Manhattan works best for grid movement)</li>
                 <li>Click "Set Start" and click on the grid to place the start point (green)</li>
                 <li>Click "Set Goal" and click on the grid to place the goal point (red)</li>
                 <li>Click cells to add/remove walls (dark gray) - optional</li>
-                <li>Click "Run Dijkstra" to visualize the algorithm finding the shortest path</li>
-                <li>Use "Clear Path" to reset visualization or "Reset Grid" to start over</li>
+                <li>Click "Run A*" to visualize the algorithm finding the shortest path</li>
+                <li>Compare the number of explored nodes with Dijkstra's algorithm!</li>
             </ol>
         </div>
 
         <div class="controls">
+            <div class="heuristic-selector">
+                <label for="heuristic">Heuristic:</label>
+                <select id="heuristic">
+                    <option value="manhattan">Manhattan Distance</option>
+                    <option value="euclidean">Euclidean Distance</option>
+                    <option value="chebyshev">Chebyshev Distance</option>
+                    <option value="none">None (Dijkstra)</option>
+                </select>
+            </div>
             <button id="setStartBtn" class="btn-success">Set Start</button>
             <button id="setGoalBtn" class="btn-danger">Set Goal</button>
             <button id="addWallBtn" class="btn-secondary">Toggle Walls</button>
-            <button id="runBtn" class="btn-primary">Run Dijkstra</button>
+            <button id="runBtn" class="btn-primary">Run A*</button>
             <button id="clearPathBtn" class="btn-secondary">Clear Path</button>
             <button id="resetBtn" class="btn-secondary">Reset Grid</button>
         </div>
@@ -327,7 +429,7 @@
             </div>
             <div class="legend-item">
                 <div class="legend-box" style="background: #bee3f8;"></div>
-                <span>Visited</span>
+                <span>Explored</span>
             </div>
             <div class="legend-item">
                 <div class="legend-box" style="background: #ffd700;"></div>
@@ -335,7 +437,22 @@
             </div>
         </div>
 
-        <div id="status" class="status info">Click "Set Start" to begin</div>
+        <div class="stats">
+            <div class="stat-item">
+                <div class="stat-value" id="nodesExplored">0</div>
+                <div class="stat-label">Nodes Explored</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="pathLength">0</div>
+                <div class="stat-label">Path Length</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="timeTaken">0ms</div>
+                <div class="stat-label">Time Taken</div>
+            </div>
+        </div>
+
+        <div id="status" class="status info">Select a heuristic and click "Set Start" to begin</div>
     </div>
 
     <script>
@@ -350,15 +467,24 @@
         let mode = 'wall'; // 'start', 'goal', 'wall'
         let isRunning = false;
 
+        // Stats
+        let nodesExplored = 0;
+        let pathLength = 0;
+        let startTime = 0;
+
         // DOM elements
         const gridElement = document.getElementById('grid');
         const statusElement = document.getElementById('status');
+        const heuristicSelect = document.getElementById('heuristic');
         const setStartBtn = document.getElementById('setStartBtn');
         const setGoalBtn = document.getElementById('setGoalBtn');
         const addWallBtn = document.getElementById('addWallBtn');
         const runBtn = document.getElementById('runBtn');
         const clearPathBtn = document.getElementById('clearPathBtn');
         const resetBtn = document.getElementById('resetBtn');
+        const nodesExploredEl = document.getElementById('nodesExplored');
+        const pathLengthEl = document.getElementById('pathLength');
+        const timeTakenEl = document.getElementById('timeTaken');
 
         // Cell class
         class Cell {
@@ -370,7 +496,9 @@
                 this.isGoal = false;
                 this.isVisited = false;
                 this.isPath = false;
-                this.distance = Infinity;
+                this.g = Infinity; // Cost from start
+                this.h = 0; // Heuristic cost to goal
+                this.f = Infinity; // Total cost (g + h)
                 this.previous = null;
                 this.element = null;
             }
@@ -378,7 +506,9 @@
             reset() {
                 this.isVisited = false;
                 this.isPath = false;
-                this.distance = Infinity;
+                this.g = Infinity;
+                this.h = 0;
+                this.f = Infinity;
                 this.previous = null;
                 this.updateDisplay();
             }
@@ -399,6 +529,41 @@
                 else if (this.isGoal) this.element.classList.add('goal');
                 else if (this.isPath) this.element.classList.add('path');
                 else if (this.isVisited) this.element.classList.add('visited');
+            }
+        }
+
+        // Heuristic functions
+        function manhattanDistance(cell1, cell2) {
+            return Math.abs(cell1.row - cell2.row) + Math.abs(cell1.col - cell2.col);
+        }
+
+        function euclideanDistance(cell1, cell2) {
+            const dx = cell1.row - cell2.row;
+            const dy = cell1.col - cell2.col;
+            return Math.sqrt(dx * dx + dy * dy);
+        }
+
+        function chebyshevDistance(cell1, cell2) {
+            const dx = Math.abs(cell1.row - cell2.row);
+            const dy = Math.abs(cell1.col - cell2.col);
+            return Math.max(dx, dy);
+        }
+
+        function getHeuristic(cell) {
+            if (!goalCell) return 0;
+
+            const heuristicType = heuristicSelect.value;
+            switch (heuristicType) {
+                case 'manhattan':
+                    return manhattanDistance(cell, goalCell);
+                case 'euclidean':
+                    return euclideanDistance(cell, goalCell);
+                case 'chebyshev':
+                    return chebyshevDistance(cell, goalCell);
+                case 'none':
+                    return 0; // Behaves like Dijkstra
+                default:
+                    return manhattanDistance(cell, goalCell);
             }
         }
 
@@ -423,7 +588,8 @@
 
             startCell = null;
             goalCell = null;
-            updateStatus('Click "Set Start" to begin', 'info');
+            resetStats();
+            updateStatus('Select a heuristic and click "Set Start" to begin', 'info');
         }
 
         // Handle cell click
@@ -444,7 +610,6 @@
                 startCell = cell;
                 cell.updateDisplay();
                 mode = 'wall';
-                setStartBtn.classList.remove('active');
                 updateStatus('Start point set! Now click "Set Goal"', 'info');
             } else if (mode === 'goal') {
                 if (goalCell) {
@@ -460,8 +625,7 @@
                 goalCell = cell;
                 cell.updateDisplay();
                 mode = 'wall';
-                setGoalBtn.classList.remove('active');
-                updateStatus('Goal point set! Add walls or click "Run Dijkstra"', 'success');
+                updateStatus('Goal point set! Add walls or click "Run A*"', 'success');
             } else if (mode === 'wall') {
                 if (cell.isStart || cell.isGoal) return;
                 cell.isWall = !cell.isWall;
@@ -491,15 +655,17 @@
             return neighbors;
         }
 
-        // Dijkstra's algorithm
-        async function dijkstra() {
+        // A* algorithm
+        async function aStar() {
             if (!startCell || !goalCell) {
                 updateStatus('Please set both start and goal points!', 'error');
                 return;
             }
 
             isRunning = true;
-            updateStatus('Running Dijkstra\'s algorithm...', 'info');
+            startTime = Date.now();
+            nodesExplored = 0;
+            updateStatus('Running A* algorithm...', 'info');
 
             // Reset all cells
             for (let row = 0; row < ROWS; row++) {
@@ -508,54 +674,71 @@
                 }
             }
 
-            const unvisited = [];
-            startCell.distance = 0;
+            const openSet = [startCell];
+            const closedSet = new Set();
 
-            // Add all cells to unvisited
-            for (let row = 0; row < ROWS; row++) {
-                for (let col = 0; col < COLS; col++) {
-                    unvisited.push(grid[row][col]);
+            startCell.g = 0;
+            startCell.h = getHeuristic(startCell);
+            startCell.f = startCell.g + startCell.h;
+
+            while (openSet.length > 0) {
+                // Find cell with lowest f score
+                let current = openSet[0];
+                let currentIndex = 0;
+
+                for (let i = 1; i < openSet.length; i++) {
+                    if (openSet[i].f < current.f) {
+                        current = openSet[i];
+                        currentIndex = i;
+                    }
                 }
-            }
 
-            while (unvisited.length > 0) {
-                // Sort by distance and get cell with minimum distance
-                unvisited.sort((a, b) => a.distance - b.distance);
-                const current = unvisited.shift();
-
-                // If we reached a wall or infinity, we're done
-                if (current.distance === Infinity) {
-                    updateStatus('No path found!', 'error');
+                // If we reached the goal, reconstruct path
+                if (current === goalCell) {
+                    const endTime = Date.now();
+                    await reconstructPath();
+                    updateStats(endTime - startTime);
+                    updateStatus(`Path found! Explored ${nodesExplored} nodes`, 'success');
                     isRunning = false;
                     return;
                 }
+
+                // Move current from open to closed set
+                openSet.splice(currentIndex, 1);
+                closedSet.add(current);
 
                 // Mark as visited
                 if (!current.isStart && !current.isGoal) {
                     current.isVisited = true;
                     current.updateDisplay();
-                    await sleep(20); // Animation delay
-                }
-
-                // If we reached the goal, reconstruct path
-                if (current === goalCell) {
-                    await reconstructPath();
-                    updateStatus('Path found!', 'success');
-                    isRunning = false;
-                    return;
+                    nodesExplored++;
+                    nodesExploredEl.textContent = nodesExplored;
+                    await sleep(15); // Animation delay
                 }
 
                 // Check all neighbors
                 const neighbors = getNeighbors(current);
                 for (const neighbor of neighbors) {
-                    const altDistance = current.distance + 1;
-                    if (altDistance < neighbor.distance) {
-                        neighbor.distance = altDistance;
-                        neighbor.previous = current;
+                    if (closedSet.has(neighbor)) continue;
+
+                    const tentativeG = current.g + 1;
+
+                    if (!openSet.includes(neighbor)) {
+                        openSet.push(neighbor);
+                    } else if (tentativeG >= neighbor.g) {
+                        continue;
                     }
+
+                    // This path is the best so far
+                    neighbor.previous = current;
+                    neighbor.g = tentativeG;
+                    neighbor.h = getHeuristic(neighbor);
+                    neighbor.f = neighbor.g + neighbor.h;
                 }
             }
 
+            const endTime = Date.now();
+            updateStats(endTime - startTime);
             updateStatus('No path found!', 'error');
             isRunning = false;
         }
@@ -570,11 +753,13 @@
                 current = current.previous;
             }
 
+            pathLength = path.length;
+
             // Animate path in reverse order
             for (let i = path.length - 1; i >= 0; i--) {
                 path[i].isPath = true;
                 path[i].updateDisplay();
-                await sleep(50);
+                await sleep(30);
             }
         }
 
@@ -589,6 +774,22 @@
             statusElement.className = `status ${type}`;
         }
 
+        // Reset statistics
+        function resetStats() {
+            nodesExplored = 0;
+            pathLength = 0;
+            nodesExploredEl.textContent = '0';
+            pathLengthEl.textContent = '0';
+            timeTakenEl.textContent = '0ms';
+        }
+
+        // Update statistics
+        function updateStats(timeTaken) {
+            nodesExploredEl.textContent = nodesExplored;
+            pathLengthEl.textContent = pathLength;
+            timeTakenEl.textContent = timeTaken + 'ms';
+        }
+
         // Clear path only (keep walls, start, goal)
         function clearPath() {
             if (isRunning) return;
@@ -598,6 +799,7 @@
                     grid[row][col].reset();
                 }
             }
+            resetStats();
             updateStatus('Path cleared. Ready to run again!', 'info');
         }
 
@@ -622,7 +824,7 @@
 
         runBtn.addEventListener('click', () => {
             if (!isRunning) {
-                dijkstra();
+                aStar();
             }
         });
 
@@ -631,6 +833,13 @@
         resetBtn.addEventListener('click', () => {
             if (!isRunning) {
                 initGrid();
+            }
+        });
+
+        heuristicSelect.addEventListener('change', () => {
+            if (!isRunning) {
+                clearPath();
+                updateStatus(`Heuristic changed to ${heuristicSelect.options[heuristicSelect.selectedIndex].text}`, 'info');
             }
         });
 
