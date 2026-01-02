@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vision Transformers & Transformer Architecture</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 1.1em;
+        }
+
+        .nav-links {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        .nav-links a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+            margin: 0 10px;
+            padding: 8px 16px;
+            border-radius: 5px;
+            transition: all 0.3s;
+            display: inline-block;
+        }
+
+        .nav-links a:hover {
+            background: #667eea;
+            color: white;
+        }
+
+        .section {
+            margin-bottom: 40px;
+        }
+
+        h2 {
+            color: #2d3748;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 3px solid #667eea;
+            font-size: 1.8em;
+        }
+
+        h3 {
+            color: #4a5568;
+            margin: 25px 0 15px 0;
+            font-size: 1.4em;
+        }
+
+        h4 {
+            color: #4a5568;
+            margin: 20px 0 10px 0;
+            font-size: 1.1em;
+        }
+
+        p {
+            line-height: 1.8;
+            color: #4a5568;
+            margin-bottom: 15px;
+        }
+
+        .highlight-box {
+            background: #f7fafc;
+            border-left: 4px solid #667eea;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+
+        .key-concept {
+            background: #ebf8ff;
+            border-left: 4px solid #3182ce;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+
+        .warning-box {
+            background: #fffaf0;
+            border-left: 4px solid #ed8936;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+
+        .formula {
+            background: #f7fafc;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            font-size: 1.1em;
+            text-align: center;
+            margin: 15px 0;
+            overflow-x: auto;
+        }
+
+        code {
+            background: #e2e8f0;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.95em;
+        }
+
+        ul, ol {
+            margin-left: 30px;
+            margin-bottom: 15px;
+        }
+
+        li {
+            margin-bottom: 10px;
+            line-height: 1.6;
+            color: #4a5568;
+        }
+
+        .interactive-demo {
+            background: #f8f9fa;
+            border: 2px solid #667eea;
+            border-radius: 10px;
+            padding: 25px;
+            margin: 25px 0;
+        }
+
+        .demo-title {
+            font-size: 1.2em;
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 15px;
+        }
+
+        .attention-viz {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            gap: 5px;
+            margin: 20px 0;
+        }
+
+        .attention-cell {
+            aspect-ratio: 1;
+            background: #e2e8f0;
+            border-radius: 3px;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8em;
+        }
+
+        .attention-cell:hover {
+            transform: scale(1.1);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .patch-demo {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin: 20px 0;
+            max-width: 400px;
+        }
+
+        .patch {
+            aspect-ratio: 1;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: 2px solid #4a5568;
+            border-radius: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .patch:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .architecture-diagram {
+            background: white;
+            border: 2px solid #cbd5e0;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .layer {
+            background: #edf2f7;
+            border: 2px solid #667eea;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+            text-align: center;
+            font-weight: 600;
+            color: #2d3748;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+
+        .layer:hover {
+            background: #667eea;
+            color: white;
+            transform: translateX(5px);
+        }
+
+        .arrow {
+            text-align: center;
+            font-size: 1.5em;
+            color: #667eea;
+            margin: 5px 0;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        th {
+            background: #667eea;
+            color: white;
+            font-weight: 600;
+        }
+
+        tr:hover {
+            background: #f7fafc;
+        }
+
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .comparison-card {
+            background: #f8f9fa;
+            border: 2px solid #cbd5e0;
+            border-radius: 10px;
+            padding: 20px;
+        }
+
+        .comparison-card h4 {
+            color: #667eea;
+            margin-top: 0;
+        }
+
+        .slider-container {
+            margin: 20px 0;
+        }
+
+        .slider {
+            width: 100%;
+            height: 8px;
+            border-radius: 5px;
+            background: #e2e8f0;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+        }
+
+        .slider::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+        }
+
+        .attention-heads {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin: 20px 0;
+        }
+
+        .head {
+            flex: 1;
+            min-width: 100px;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 8px;
+            text-align: center;
+            font-weight: 600;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+
+        .head:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+            }
+
+            h1 {
+                font-size: 1.8em;
+            }
+
+            .comparison-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .attention-viz {
+                grid-template-columns: repeat(4, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Vision Transformers & Transformer Architecture</h1>
+        <p class="subtitle">Understanding the foundations of modern deep learning</p>
+
+        <div class="nav-links">
+            <a href="index.html">Dijkstra's Algorithm</a>
+            <a href="astar.html">A* Algorithm</a>
+        </div>
+
+        <!-- Introduction -->
+        <div class="section">
+            <h2>Introduction</h2>
+            <p>
+                Transformers have revolutionized both natural language processing and computer vision. Originally
+                introduced in the paper "Attention Is All You Need" (2017) for machine translation, the transformer
+                architecture has become the foundation for models like BERT, GPT, and Vision Transformers (ViT).
+            </p>
+            <div class="key-concept">
+                <strong>Key Innovation:</strong> Transformers replace recurrent and convolutional layers with
+                self-attention mechanisms, allowing the model to process all parts of the input simultaneously
+                and capture long-range dependencies efficiently.
+            </div>
+        </div>
+
+        <!-- Transformer Basics -->
+        <div class="section">
+            <h2>The Transformer Architecture</h2>
+
+            <h3>Core Components</h3>
+
+            <div class="architecture-diagram">
+                <div class="layer">Output Probabilities</div>
+                <div class="arrow">↑</div>
+                <div class="layer">Linear + Softmax</div>
+                <div class="arrow">↑</div>
+                <div class="layer">Decoder (N× layers)</div>
+                <div class="arrow">↑</div>
+                <div class="layer">Encoder (N× layers)</div>
+                <div class="arrow">↑</div>
+                <div class="layer">Input Embeddings + Positional Encoding</div>
+            </div>
+
+            <h3>Self-Attention Mechanism</h3>
+            <p>
+                The heart of the transformer is the self-attention mechanism, which allows each element in the
+                sequence to attend to all other elements. This is computed using three learned transformations:
+                Query (Q), Key (K), and Value (V).
+            </p>
+
+            <div class="formula">
+                Attention(Q, K, V) = softmax(QK<sup>T</sup> / √d<sub>k</sub>) V
+            </div>
+
+            <div class="highlight-box">
+                <h4>Breaking Down the Formula:</h4>
+                <ul>
+                    <li><strong>Q (Query):</strong> What am I looking for?</li>
+                    <li><strong>K (Key):</strong> What do I contain?</li>
+                    <li><strong>V (Value):</strong> What information do I carry?</li>
+                    <li><strong>QK<sup>T</sup>:</strong> Compute similarity scores between queries and keys</li>
+                    <li><strong>√d<sub>k</sub>:</strong> Scale factor to prevent exploding gradients (d<sub>k</sub> is key dimension)</li>
+                    <li><strong>softmax:</strong> Normalize scores to create attention weights (sum to 1)</li>
+                    <li><strong>× V:</strong> Weighted sum of values based on attention weights</li>
+                </ul>
+            </div>
+
+            <div class="interactive-demo">
+                <div class="demo-title">Interactive Attention Visualization</div>
+                <p>Click on a token to see its attention weights to other tokens:</p>
+                <div class="attention-viz" id="attentionViz"></div>
+                <p id="attentionInfo" style="margin-top: 15px; font-weight: 600; color: #667eea;">
+                    Click a cell to see attention patterns
+                </p>
+            </div>
+
+            <h3>Multi-Head Attention</h3>
+            <p>
+                Instead of computing attention once, multi-head attention computes it multiple times in parallel
+                with different learned linear transformations. This allows the model to attend to different
+                aspects of the input simultaneously.
+            </p>
+
+            <div class="formula">
+                MultiHead(Q, K, V) = Concat(head<sub>1</sub>, ..., head<sub>h</sub>)W<sup>O</sup>
+                <br><br>
+                where head<sub>i</sub> = Attention(QW<sub>i</sub><sup>Q</sup>, KW<sub>i</sub><sup>K</sup>, VW<sub>i</sub><sup>V</sup>)
+            </div>
+
+            <div class="interactive-demo">
+                <div class="demo-title">Multi-Head Attention (8 Heads)</div>
+                <p>Each head learns to attend to different patterns:</p>
+                <div class="attention-heads">
+                    <div class="head">Head 1<br>Syntax</div>
+                    <div class="head">Head 2<br>Semantics</div>
+                    <div class="head">Head 3<br>Position</div>
+                    <div class="head">Head 4<br>Relations</div>
+                    <div class="head">Head 5<br>Context</div>
+                    <div class="head">Head 6<br>Dependencies</div>
+                    <div class="head">Head 7<br>Structure</div>
+                    <div class="head">Head 8<br>Patterns</div>
+                </div>
+                <p style="margin-top: 15px; font-style: italic; color: #666;">
+                    Different heads specialize in capturing different types of relationships in the data
+                </p>
+            </div>
+
+            <h3>Positional Encoding</h3>
+            <p>
+                Since transformers don't have inherent notion of sequence order (unlike RNNs), we add positional
+                encodings to the input embeddings to inject information about token positions.
+            </p>
+
+            <div class="formula">
+                PE<sub>(pos, 2i)</sub> = sin(pos / 10000<sup>2i/d<sub>model</sub></sup>)
+                <br>
+                PE<sub>(pos, 2i+1)</sub> = cos(pos / 10000<sup>2i/d<sub>model</sub></sup>)
+            </div>
+
+            <p>
+                This sinusoidal encoding allows the model to easily learn to attend to relative positions,
+                as offsets can be represented as linear transformations.
+            </p>
+
+            <h3>Feed-Forward Networks</h3>
+            <p>
+                After attention, each position is passed through a position-wise feed-forward network (FFN),
+                applied identically to each position:
+            </p>
+
+            <div class="formula">
+                FFN(x) = max(0, xW<sub>1</sub> + b<sub>1</sub>)W<sub>2</sub> + b<sub>2</sub>
+            </div>
+
+            <p>
+                This is a two-layer network with ReLU activation, typically with the inner layer having
+                4× the dimensionality of the model.
+            </p>
+        </div>
+
+        <!-- Vision Transformers -->
+        <div class="section">
+            <h2>Vision Transformers (ViT)</h2>
+
+            <h3>From Images to Sequences</h3>
+            <p>
+                Vision Transformers adapt the transformer architecture for images by treating an image as a
+                sequence of patches. The key insight: an image can be split into patches and processed like
+                words in a sentence.
+            </p>
+
+            <div class="interactive-demo">
+                <div class="demo-title">Image Patch Tokenization</div>
+                <p>A 224×224 image divided into 16×16 patches creates 196 tokens (14×14 grid):</p>
+                <div class="patch-demo">
+                    <div class="patch">P1</div>
+                    <div class="patch">P2</div>
+                    <div class="patch">P3</div>
+                    <div class="patch">P4</div>
+                    <div class="patch">P5</div>
+                    <div class="patch">P6</div>
+                    <div class="patch">P7</div>
+                    <div class="patch">P8</div>
+                    <div class="patch">P9</div>
+                    <div class="patch">P10</div>
+                    <div class="patch">P11</div>
+                    <div class="patch">P12</div>
+                    <div class="patch">P13</div>
+                    <div class="patch">P14</div>
+                    <div class="patch">P15</div>
+                    <div class="patch">P16</div>
+                </div>
+                <p style="margin-top: 15px; font-style: italic; color: #666;">
+                    Each patch is flattened and linearly embedded, then treated as a token
+                </p>
+            </div>
+
+            <h3>ViT Architecture Steps</h3>
+            <ol>
+                <li><strong>Patch Embedding:</strong> Split image into fixed-size patches (e.g., 16×16 pixels)</li>
+                <li><strong>Linear Projection:</strong> Flatten each patch and project to embedding dimension</li>
+                <li><strong>Add [CLS] Token:</strong> Prepend a learnable classification token</li>
+                <li><strong>Add Positional Embeddings:</strong> Add learned position embeddings to patches</li>
+                <li><strong>Transformer Encoder:</strong> Process through standard transformer layers</li>
+                <li><strong>Classification Head:</strong> Use [CLS] token output for final prediction</li>
+            </ol>
+
+            <div class="highlight-box">
+                <h4>Mathematical Formulation:</h4>
+                <p>For an image <strong>x ∈ ℝ<sup>H×W×C</sup></strong>:</p>
+                <div class="formula" style="text-align: left; margin: 15px 0;">
+                    1. Reshape to patches: x<sub>p</sub> ∈ ℝ<sup>N×(P²·C)</sup><br>
+                    &nbsp;&nbsp;&nbsp;where N = HW/P² (number of patches), P = patch size<br><br>
+                    2. Linear embedding: z<sub>0</sub> = [x<sub>class</sub>; x<sub>p</sub><sup>1</sup>E; x<sub>p</sub><sup>2</sup>E; ...; x<sub>p</sub><sup>N</sup>E] + E<sub>pos</sub><br>
+                    &nbsp;&nbsp;&nbsp;where E ∈ ℝ<sup>(P²·C)×D</sup>, E<sub>pos</sub> ∈ ℝ<sup>(N+1)×D</sup><br><br>
+                    3. Transformer encoder: z'<sub>ℓ</sub> = MSA(LN(z<sub>ℓ-1</sub>)) + z<sub>ℓ-1</sub><br>
+                    &nbsp;&nbsp;&nbsp;z<sub>ℓ</sub> = MLP(LN(z'<sub>ℓ</sub>)) + z'<sub>ℓ</sub><br><br>
+                    4. Classification: y = LN(z<sub>L</sub><sup>0</sup>)
+                </div>
+            </div>
+
+            <h3>Why ViT Works</h3>
+            <div class="comparison-grid">
+                <div class="comparison-card">
+                    <h4>CNNs (Convolutional Neural Networks)</h4>
+                    <ul>
+                        <li>Inductive bias: locality and translation equivariance</li>
+                        <li>Process image hierarchically with local receptive fields</li>
+                        <li>Good with small datasets due to strong inductive biases</li>
+                        <li>Limited long-range dependencies without deep networks</li>
+                    </ul>
+                </div>
+                <div class="comparison-card">
+                    <h4>Vision Transformers</h4>
+                    <ul>
+                        <li>Minimal inductive bias: learns spatial relationships</li>
+                        <li>Global receptive field from the first layer</li>
+                        <li>Requires large datasets to learn visual structure</li>
+                        <li>Excellent at capturing long-range dependencies</li>
+                        <li>More scalable and parallelizable</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="warning-box">
+                <strong>Important Consideration:</strong> ViT models typically require pre-training on large
+                datasets (e.g., ImageNet-21k or JFT-300M) to perform well. With insufficient data, they may
+                underperform CNNs due to lack of inductive biases. However, when pre-trained on large datasets,
+                they often surpass CNNs on downstream tasks.
+            </div>
+        </div>
+
+        <!-- Key Innovations -->
+        <div class="section">
+            <h2>Key Innovations & Variants</h2>
+
+            <h3>Hybrid Architectures</h3>
+            <p>
+                Combining the best of both worlds by using CNN feature maps as input to transformers,
+                rather than raw patches. This provides both local inductive biases and global attention.
+            </p>
+
+            <h3>Efficient Transformers</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Model</th>
+                        <th>Key Innovation</th>
+                        <th>Complexity</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Swin Transformer</td>
+                        <td>Shifted windows for hierarchical feature maps</td>
+                        <td>O(N) linear</td>
+                    </tr>
+                    <tr>
+                        <td>Linformer</td>
+                        <td>Low-rank approximation of attention</td>
+                        <td>O(N) linear</td>
+                    </tr>
+                    <tr>
+                        <td>Performer</td>
+                        <td>FAVOR+ kernel approximation</td>
+                        <td>O(N) linear</td>
+                    </tr>
+                    <tr>
+                        <td>Standard ViT</td>
+                        <td>Full self-attention</td>
+                        <td>O(N²) quadratic</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>Recent Developments</h3>
+            <ul>
+                <li><strong>DeiT (Data-efficient ViT):</strong> Distillation techniques to train ViT on smaller datasets</li>
+                <li><strong>BEiT:</strong> BERT-style pre-training for images using masked image modeling</li>
+                <li><strong>MAE (Masked Autoencoders):</strong> Reconstruct randomly masked patches for self-supervised learning</li>
+                <li><strong>DiT (Diffusion Transformers):</strong> Replace U-Net with transformers in diffusion models</li>
+            </ul>
+        </div>
+
+        <!-- Practical Considerations -->
+        <div class="section">
+            <h2>Practical Considerations</h2>
+
+            <h3>Hyperparameters</h3>
+            <div class="highlight-box">
+                <strong>Common ViT Configurations:</strong>
+                <ul style="margin-top: 10px;">
+                    <li><strong>ViT-Base:</strong> 12 layers, 768 hidden dim, 12 heads, 86M parameters</li>
+                    <li><strong>ViT-Large:</strong> 24 layers, 1024 hidden dim, 16 heads, 307M parameters</li>
+                    <li><strong>ViT-Huge:</strong> 32 layers, 1280 hidden dim, 16 heads, 632M parameters</li>
+                </ul>
+            </div>
+
+            <h3>Training Tips</h3>
+            <ol>
+                <li><strong>Pre-training is crucial:</strong> Use large datasets or pre-trained weights</li>
+                <li><strong>Longer training schedules:</strong> Transformers often need more epochs than CNNs</li>
+                <li><strong>Strong regularization:</strong> Use dropout, stochastic depth, mixup/cutmix</li>
+                <li><strong>Optimizer choice:</strong> AdamW with weight decay works well</li>
+                <li><strong>Learning rate warmup:</strong> Start with small LR and gradually increase</li>
+            </ol>
+
+            <h3>When to Use ViT vs CNN</h3>
+            <div class="comparison-grid">
+                <div class="comparison-card">
+                    <h4>Use ViT When:</h4>
+                    <ul>
+                        <li>You have large datasets or can use pre-training</li>
+                        <li>Long-range dependencies are important</li>
+                        <li>You need better scalability</li>
+                        <li>Transfer learning from large pre-trained models</li>
+                    </ul>
+                </div>
+                <div class="comparison-card">
+                    <h4>Use CNNs When:</h4>
+                    <ul>
+                        <li>Limited data or computational resources</li>
+                        <li>Need strong inductive biases</li>
+                        <li>Real-time inference is critical</li>
+                        <li>Training from scratch on small datasets</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Resources -->
+        <div class="section">
+            <h2>Further Reading</h2>
+            <div class="highlight-box">
+                <h4>Foundational Papers:</h4>
+                <ul>
+                    <li><strong>Attention Is All You Need</strong> (Vaswani et al., 2017) - Original transformer paper</li>
+                    <li><strong>An Image is Worth 16x16 Words</strong> (Dosovitskiy et al., 2020) - Vision Transformers</li>
+                    <li><strong>Training data-efficient image transformers</strong> (Touvron et al., 2021) - DeiT</li>
+                    <li><strong>Swin Transformer</strong> (Liu et al., 2021) - Hierarchical vision transformers</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Interactive Attention Visualization
+        const attentionViz = document.getElementById('attentionViz');
+        const attentionInfo = document.getElementById('attentionInfo');
+        const tokens = ['The', 'cat', 'sat', 'on', 'the', 'mat', '.', '[END]'];
+
+        // Create attention grid
+        tokens.forEach((token, i) => {
+            const cell = document.createElement('div');
+            cell.className = 'attention-cell';
+            cell.textContent = token;
+            cell.dataset.index = i;
+            cell.addEventListener('click', () => showAttention(i));
+            attentionViz.appendChild(cell);
+        });
+
+        function showAttention(selectedIndex) {
+            // Simulate attention weights (in practice, these come from the model)
+            const attentionWeights = generateAttentionWeights(selectedIndex);
+
+            // Update visualization
+            const cells = attentionViz.querySelectorAll('.attention-cell');
+            cells.forEach((cell, i) => {
+                const weight = attentionWeights[i];
+                const intensity = Math.floor(weight * 255);
+                const color = `rgb(102, 126, ${234 - intensity}, ${weight})`;
+                cell.style.background = `rgba(102, 126, 234, ${weight})`;
+                cell.style.color = weight > 0.5 ? 'white' : '#2d3748';
+                cell.style.fontWeight = weight > 0.5 ? 'bold' : 'normal';
+            });
+
+            // Update info
+            attentionInfo.textContent = `"${tokens[selectedIndex]}" attends to other tokens with varying weights (darker = higher attention)`;
+        }
+
+        function generateAttentionWeights(selectedIndex) {
+            // Generate realistic-looking attention weights
+            const weights = new Array(tokens.length).fill(0);
+
+            // Self-attention is usually high
+            weights[selectedIndex] = 0.8 + Math.random() * 0.2;
+
+            // Neighboring tokens get some attention
+            if (selectedIndex > 0) {
+                weights[selectedIndex - 1] = 0.3 + Math.random() * 0.3;
+            }
+            if (selectedIndex < tokens.length - 1) {
+                weights[selectedIndex + 1] = 0.3 + Math.random() * 0.3;
+            }
+
+            // Random attention to other tokens
+            for (let i = 0; i < tokens.length; i++) {
+                if (i !== selectedIndex && i !== selectedIndex - 1 && i !== selectedIndex + 1) {
+                    weights[i] = Math.random() * 0.3;
+                }
+            }
+
+            // Normalize
+            const sum = weights.reduce((a, b) => a + b, 0);
+            return weights.map(w => w / sum);
+        }
+
+        // Add hover effect to architecture layers
+        const layers = document.querySelectorAll('.layer');
+        layers.forEach((layer, index) => {
+            layer.addEventListener('click', () => {
+                layer.style.background = '#667eea';
+                layer.style.color = 'white';
+                setTimeout(() => {
+                    layer.style.background = '#edf2f7';
+                    layer.style.color = '#2d3748';
+                }, 300);
+            });
+        });
+
+        // Add hover effect to patches
+        const patches = document.querySelectorAll('.patch');
+        patches.forEach((patch, index) => {
+            patch.addEventListener('click', () => {
+                attentionInfo.textContent = `Patch ${index + 1} represents a 16×16 pixel region of the image, flattened to a 768-dimensional embedding vector`;
+            });
+        });
+
+        // Multi-head attention heads interaction
+        const heads = document.querySelectorAll('.head');
+        heads.forEach((head, index) => {
+            head.addEventListener('click', () => {
+                heads.forEach(h => h.style.opacity = '0.3');
+                head.style.opacity = '1';
+                setTimeout(() => {
+                    heads.forEach(h => h.style.opacity = '1');
+                }, 1000);
+            });
+        });
+    </script>
+</body>
+</html>
