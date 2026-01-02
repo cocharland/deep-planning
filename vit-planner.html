@@ -669,8 +669,8 @@
                 if (this.isWall) this.element.classList.add('wall');
                 else if (this.isStart) this.element.classList.add('start');
                 else if (this.isGoal) this.element.classList.add('goal');
-                else if (this.isPredicted) this.element.classList.add('predicted-path');
                 else if (this.isPath) this.element.classList.add('path');
+                else if (this.isPredicted) this.element.classList.add('predicted-path');
             }
         }
 
@@ -1097,21 +1097,30 @@
             const input = getGridTensor();
             const prediction = model.forward(input);
 
-            // Clear previous predictions
+            // Clear previous predictions and paths
             for (let row = 0; row < GRID_SIZE; row++) {
                 for (let col = 0; col < GRID_SIZE; col++) {
                     grid[row][col].isPredicted = false;
+                    grid[row][col].isPath = false;
                 }
             }
 
-            // Show top predictions
-            const threshold = 0.5;
+            // Find max prediction value for adaptive threshold
+            const maxPred = Math.max(...prediction);
+            const minPred = Math.min(...prediction);
+            addLog(`Prediction range: ${minPred.toFixed(4)} to ${maxPred.toFixed(4)}`, 'info');
+
+            // Count predictions above different thresholds
+            let count = 0;
+            const threshold = 0.3; // Lower threshold to see more predictions
+
             for (let i = 0; i < prediction.length; i++) {
                 if (prediction[i] > threshold) {
                     const row = Math.floor(i / GRID_SIZE);
                     const col = i % GRID_SIZE;
-                    if (!grid[row][col].isStart && !grid[row][col].isGoal) {
+                    if (!grid[row][col].isStart && !grid[row][col].isGoal && !grid[row][col].isWall) {
                         grid[row][col].isPredicted = true;
+                        count++;
                     }
                 }
             }
@@ -1123,7 +1132,11 @@
                 }
             }
 
-            addLog('Path predicted! Purple cells show ViT prediction.', 'success');
+            addLog(`Path predicted! ${count} cells above threshold (purple).`, 'success');
+
+            if (count === 0) {
+                addLog('No predictions above threshold. Model may need more training.', 'error');
+            }
         }
 
         // Add log entry
@@ -1194,12 +1207,25 @@
         document.getElementById('predictBtn').addEventListener('click', predictPath);
 
         document.getElementById('compareBtn').addEventListener('click', () => {
-            // Clear predictions
+            if (!model) {
+                addLog('No trained model! Train the model first.', 'error');
+                return;
+            }
+
+            if (!startCell || !goalCell) {
+                addLog('Set start and goal points first!', 'error');
+                return;
+            }
+
+            // Clear both predictions and paths
             for (let row = 0; row < GRID_SIZE; row++) {
                 for (let col = 0; col < GRID_SIZE; col++) {
                     grid[row][col].isPath = false;
+                    grid[row][col].isPredicted = false;
                 }
             }
+
+            addLog('--- Starting Comparison ---', 'info');
 
             // Run A*
             const gridState = grid.map(row => row.map(cell => cell.isWall ? 1 : 0));
@@ -1214,8 +1240,32 @@
                 addLog('A* found no path!', 'error');
             }
 
-            // Predict with ViT
-            predictPath();
+            // Get ViT prediction
+            const input = getGridTensor();
+            const prediction = model.forward(input);
+
+            const maxPred = Math.max(...prediction);
+            const minPred = Math.min(...prediction);
+            addLog(`ViT prediction range: ${minPred.toFixed(4)} to ${maxPred.toFixed(4)}`, 'info');
+
+            // Show ViT predictions
+            let predCount = 0;
+            const threshold = 0.3;
+
+            for (let i = 0; i < prediction.length; i++) {
+                if (prediction[i] > threshold) {
+                    const row = Math.floor(i / GRID_SIZE);
+                    const col = i % GRID_SIZE;
+                    // Only mark as predicted if not already on A* path
+                    if (!grid[row][col].isPath && !grid[row][col].isStart &&
+                        !grid[row][col].isGoal && !grid[row][col].isWall) {
+                        grid[row][col].isPredicted = true;
+                        predCount++;
+                    }
+                }
+            }
+
+            addLog(`ViT predictions (purple): ${predCount} cells`, 'success');
 
             // Update display
             for (let row = 0; row < GRID_SIZE; row++) {
@@ -1223,6 +1273,8 @@
                     grid[row][col].updateDisplay();
                 }
             }
+
+            addLog('Gold = A* path, Purple = ViT-only predictions', 'info');
         });
 
         lrSlider.addEventListener('input', (e) => {
