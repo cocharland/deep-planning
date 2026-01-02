@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dijkstra's Pathfinding Visualization</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 900px;
+            width: 100%;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2em;
+        }
+
+        .description {
+            text-align: center;
+            color: #666;
+            margin-bottom: 20px;
+            font-size: 0.95em;
+        }
+
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f5f5f5;
+            border-radius: 10px;
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 14px;
+            font-weight: 600;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+        }
+
+        .btn-success {
+            background: #48bb78;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #38a169;
+        }
+
+        .btn-danger {
+            background: #f56565;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #e53e3e;
+        }
+
+        .btn-secondary {
+            background: #718096;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #4a5568;
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        .grid-container {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        .grid {
+            display: grid;
+            gap: 1px;
+            background: #ddd;
+            border: 2px solid #999;
+            padding: 1px;
+        }
+
+        .cell {
+            width: 25px;
+            height: 25px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .cell:hover {
+            opacity: 0.7;
+        }
+
+        .cell.wall {
+            background: #2d3748;
+        }
+
+        .cell.start {
+            background: #48bb78;
+        }
+
+        .cell.goal {
+            background: #f56565;
+        }
+
+        .cell.visited {
+            background: #bee3f8;
+            animation: visit 0.3s ease-out;
+        }
+
+        .cell.path {
+            background: #ffd700;
+            animation: path 0.5s ease-out;
+        }
+
+        @keyframes visit {
+            from {
+                transform: scale(0.3);
+                background: #e6fffa;
+            }
+            to {
+                transform: scale(1);
+                background: #bee3f8;
+            }
+        }
+
+        @keyframes path {
+            from {
+                transform: scale(0.6);
+            }
+            to {
+                transform: scale(1);
+            }
+        }
+
+        .legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            justify-content: center;
+            padding: 15px;
+            background: #f5f5f5;
+            border-radius: 10px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+        }
+
+        .legend-box {
+            width: 20px;
+            height: 20px;
+            border: 1px solid #999;
+        }
+
+        .status {
+            text-align: center;
+            margin-top: 15px;
+            padding: 10px;
+            font-weight: 600;
+            font-size: 16px;
+            border-radius: 5px;
+            min-height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .status.info {
+            background: #ebf8ff;
+            color: #2c5282;
+        }
+
+        .status.success {
+            background: #f0fff4;
+            color: #22543d;
+        }
+
+        .status.error {
+            background: #fff5f5;
+            color: #742a2a;
+        }
+
+        .instructions {
+            background: #fffaf0;
+            border-left: 4px solid #ed8936;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+        }
+
+        .instructions h3 {
+            color: #744210;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+
+        .instructions ol {
+            margin-left: 20px;
+            color: #744210;
+        }
+
+        .instructions li {
+            margin-bottom: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Dijkstra's Pathfinding Algorithm</h1>
+        <p class="description">Interactive visualization of the shortest path algorithm</p>
+
+        <div class="instructions">
+            <h3>How to Use:</h3>
+            <ol>
+                <li>Click "Set Start" and click on the grid to place the start point (green)</li>
+                <li>Click "Set Goal" and click on the grid to place the goal point (red)</li>
+                <li>Click cells to add/remove walls (dark gray) - optional</li>
+                <li>Click "Run Dijkstra" to visualize the algorithm finding the shortest path</li>
+                <li>Use "Clear Path" to reset visualization or "Reset Grid" to start over</li>
+            </ol>
+        </div>
+
+        <div class="controls">
+            <button id="setStartBtn" class="btn-success">Set Start</button>
+            <button id="setGoalBtn" class="btn-danger">Set Goal</button>
+            <button id="addWallBtn" class="btn-secondary">Toggle Walls</button>
+            <button id="runBtn" class="btn-primary">Run Dijkstra</button>
+            <button id="clearPathBtn" class="btn-secondary">Clear Path</button>
+            <button id="resetBtn" class="btn-secondary">Reset Grid</button>
+        </div>
+
+        <div class="grid-container">
+            <div id="grid" class="grid"></div>
+        </div>
+
+        <div class="legend">
+            <div class="legend-item">
+                <div class="legend-box" style="background: #48bb78;"></div>
+                <span>Start</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-box" style="background: #f56565;"></div>
+                <span>Goal</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-box" style="background: #2d3748;"></div>
+                <span>Wall</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-box" style="background: #bee3f8;"></div>
+                <span>Visited</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-box" style="background: #ffd700;"></div>
+                <span>Path</span>
+            </div>
+        </div>
+
+        <div id="status" class="status info">Click "Set Start" to begin</div>
+    </div>
+
+    <script>
+        // Grid configuration
+        const ROWS = 20;
+        const COLS = 30;
+
+        // State
+        let grid = [];
+        let startCell = null;
+        let goalCell = null;
+        let mode = 'wall'; // 'start', 'goal', 'wall'
+        let isRunning = false;
+
+        // DOM elements
+        const gridElement = document.getElementById('grid');
+        const statusElement = document.getElementById('status');
+        const setStartBtn = document.getElementById('setStartBtn');
+        const setGoalBtn = document.getElementById('setGoalBtn');
+        const addWallBtn = document.getElementById('addWallBtn');
+        const runBtn = document.getElementById('runBtn');
+        const clearPathBtn = document.getElementById('clearPathBtn');
+        const resetBtn = document.getElementById('resetBtn');
+
+        // Cell class
+        class Cell {
+            constructor(row, col) {
+                this.row = row;
+                this.col = col;
+                this.isWall = false;
+                this.isStart = false;
+                this.isGoal = false;
+                this.isVisited = false;
+                this.isPath = false;
+                this.distance = Infinity;
+                this.previous = null;
+                this.element = null;
+            }
+
+            reset() {
+                this.isVisited = false;
+                this.isPath = false;
+                this.distance = Infinity;
+                this.previous = null;
+                this.updateDisplay();
+            }
+
+            resetAll() {
+                this.isWall = false;
+                this.isStart = false;
+                this.isGoal = false;
+                this.reset();
+            }
+
+            updateDisplay() {
+                if (!this.element) return;
+
+                this.element.className = 'cell';
+                if (this.isWall) this.element.classList.add('wall');
+                else if (this.isStart) this.element.classList.add('start');
+                else if (this.isGoal) this.element.classList.add('goal');
+                else if (this.isPath) this.element.classList.add('path');
+                else if (this.isVisited) this.element.classList.add('visited');
+            }
+        }
+
+        // Initialize grid
+        function initGrid() {
+            gridElement.style.gridTemplateColumns = `repeat(${COLS}, 25px)`;
+            gridElement.innerHTML = '';
+            grid = [];
+
+            for (let row = 0; row < ROWS; row++) {
+                grid[row] = [];
+                for (let col = 0; col < COLS; col++) {
+                    const cell = new Cell(row, col);
+                    const cellElement = document.createElement('div');
+                    cellElement.className = 'cell';
+                    cellElement.addEventListener('click', () => handleCellClick(cell));
+                    cell.element = cellElement;
+                    gridElement.appendChild(cellElement);
+                    grid[row][col] = cell;
+                }
+            }
+
+            startCell = null;
+            goalCell = null;
+            updateStatus('Click "Set Start" to begin', 'info');
+        }
+
+        // Handle cell click
+        function handleCellClick(cell) {
+            if (isRunning) return;
+
+            if (mode === 'start') {
+                if (startCell) {
+                    startCell.isStart = false;
+                    startCell.updateDisplay();
+                }
+                if (cell.isGoal) {
+                    cell.isGoal = false;
+                    goalCell = null;
+                }
+                cell.isWall = false;
+                cell.isStart = true;
+                startCell = cell;
+                cell.updateDisplay();
+                mode = 'wall';
+                setStartBtn.classList.remove('active');
+                updateStatus('Start point set! Now click "Set Goal"', 'info');
+            } else if (mode === 'goal') {
+                if (goalCell) {
+                    goalCell.isGoal = false;
+                    goalCell.updateDisplay();
+                }
+                if (cell.isStart) {
+                    cell.isStart = false;
+                    startCell = null;
+                }
+                cell.isWall = false;
+                cell.isGoal = true;
+                goalCell = cell;
+                cell.updateDisplay();
+                mode = 'wall';
+                setGoalBtn.classList.remove('active');
+                updateStatus('Goal point set! Add walls or click "Run Dijkstra"', 'success');
+            } else if (mode === 'wall') {
+                if (cell.isStart || cell.isGoal) return;
+                cell.isWall = !cell.isWall;
+                cell.updateDisplay();
+            }
+        }
+
+        // Get neighbors
+        function getNeighbors(cell) {
+            const neighbors = [];
+            const directions = [
+                [-1, 0], [1, 0], [0, -1], [0, 1] // up, down, left, right
+            ];
+
+            for (const [dRow, dCol] of directions) {
+                const newRow = cell.row + dRow;
+                const newCol = cell.col + dCol;
+
+                if (newRow >= 0 && newRow < ROWS && newCol >= 0 && newCol < COLS) {
+                    const neighbor = grid[newRow][newCol];
+                    if (!neighbor.isWall) {
+                        neighbors.push(neighbor);
+                    }
+                }
+            }
+
+            return neighbors;
+        }
+
+        // Dijkstra's algorithm
+        async function dijkstra() {
+            if (!startCell || !goalCell) {
+                updateStatus('Please set both start and goal points!', 'error');
+                return;
+            }
+
+            isRunning = true;
+            updateStatus('Running Dijkstra\'s algorithm...', 'info');
+
+            // Reset all cells
+            for (let row = 0; row < ROWS; row++) {
+                for (let col = 0; col < COLS; col++) {
+                    grid[row][col].reset();
+                }
+            }
+
+            const unvisited = [];
+            startCell.distance = 0;
+
+            // Add all cells to unvisited
+            for (let row = 0; row < ROWS; row++) {
+                for (let col = 0; col < COLS; col++) {
+                    unvisited.push(grid[row][col]);
+                }
+            }
+
+            while (unvisited.length > 0) {
+                // Sort by distance and get cell with minimum distance
+                unvisited.sort((a, b) => a.distance - b.distance);
+                const current = unvisited.shift();
+
+                // If we reached a wall or infinity, we're done
+                if (current.distance === Infinity) {
+                    updateStatus('No path found!', 'error');
+                    isRunning = false;
+                    return;
+                }
+
+                // Mark as visited
+                if (!current.isStart && !current.isGoal) {
+                    current.isVisited = true;
+                    current.updateDisplay();
+                    await sleep(20); // Animation delay
+                }
+
+                // If we reached the goal, reconstruct path
+                if (current === goalCell) {
+                    await reconstructPath();
+                    updateStatus('Path found!', 'success');
+                    isRunning = false;
+                    return;
+                }
+
+                // Check all neighbors
+                const neighbors = getNeighbors(current);
+                for (const neighbor of neighbors) {
+                    const altDistance = current.distance + 1;
+                    if (altDistance < neighbor.distance) {
+                        neighbor.distance = altDistance;
+                        neighbor.previous = current;
+                    }
+                }
+            }
+
+            updateStatus('No path found!', 'error');
+            isRunning = false;
+        }
+
+        // Reconstruct path
+        async function reconstructPath() {
+            let current = goalCell.previous;
+            const path = [];
+
+            while (current && current !== startCell) {
+                path.push(current);
+                current = current.previous;
+            }
+
+            // Animate path in reverse order
+            for (let i = path.length - 1; i >= 0; i--) {
+                path[i].isPath = true;
+                path[i].updateDisplay();
+                await sleep(50);
+            }
+        }
+
+        // Utility function for delays
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        // Update status message
+        function updateStatus(message, type) {
+            statusElement.textContent = message;
+            statusElement.className = `status ${type}`;
+        }
+
+        // Clear path only (keep walls, start, goal)
+        function clearPath() {
+            if (isRunning) return;
+
+            for (let row = 0; row < ROWS; row++) {
+                for (let col = 0; col < COLS; col++) {
+                    grid[row][col].reset();
+                }
+            }
+            updateStatus('Path cleared. Ready to run again!', 'info');
+        }
+
+        // Event listeners
+        setStartBtn.addEventListener('click', () => {
+            if (isRunning) return;
+            mode = 'start';
+            updateStatus('Click on the grid to set the start point', 'info');
+        });
+
+        setGoalBtn.addEventListener('click', () => {
+            if (isRunning) return;
+            mode = 'goal';
+            updateStatus('Click on the grid to set the goal point', 'info');
+        });
+
+        addWallBtn.addEventListener('click', () => {
+            if (isRunning) return;
+            mode = 'wall';
+            updateStatus('Click cells to add/remove walls', 'info');
+        });
+
+        runBtn.addEventListener('click', () => {
+            if (!isRunning) {
+                dijkstra();
+            }
+        });
+
+        clearPathBtn.addEventListener('click', clearPath);
+
+        resetBtn.addEventListener('click', () => {
+            if (!isRunning) {
+                initGrid();
+            }
+        });
+
+        // Initialize on load
+        initGrid();
+    </script>
+</body>
+</html>
