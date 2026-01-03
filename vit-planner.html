@@ -1233,43 +1233,7 @@
             goalCell = null;
         }
 
-
         // Pre-trained expert model weights
-
-        // Load expert model from pre-trained weights
-        async function loadExpertModelInstant() {
-            addLog('=== Loading Pre-Trained Expert Model ===', 'info');
-            addLog('Loading weights trained offline...', 'info');
-
-            // Create new model
-            model = new SimpleViT();
-
-            // Load pre-trained weights
-            model.patchEmbedding = EXPERT_WEIGHTS.patchEmbedding;
-            model.attention = EXPERT_WEIGHTS.attention;
-            model.dense = EXPERT_WEIGHTS.dense;
-            model.output = EXPERT_WEIGHTS.output;
-
-            // Update stats
-            samplesCount.textContent = `${EXPERT_WEIGHTS.metadata.trainingSamples} (expert)`;
-            currentEpoch.textContent = EXPERT_WEIGHTS.metadata.epochs;
-            trainingLoss.textContent = 'N/A (pre-trained)';
-            progressBar.style.width = '100%';
-            progressBar.textContent = '100%';
-
-            addLog(`Expert model loaded! Trained on ${EXPERT_WEIGHTS.metadata.trainingSamples} samples for ${EXPERT_WEIGHTS.metadata.epochs} epochs.`, 'success');
-            addLog(`Training date: ${EXPERT_WEIGHTS.metadata.timestamp}`, 'info');
-            addLog('Try "Visualize Predictions" or "Predict Path" to see expert performance!', 'success');
-
-            // Clear the grid display
-            for (let row = 0; row < GRID_SIZE; row++) {
-                for (let col = 0; col < GRID_SIZE; col++) {
-                    grid[row][col].clear();
-                }
-            }
-            startCell = null;
-            goalCell = null;
-        }
 
                 }
 
