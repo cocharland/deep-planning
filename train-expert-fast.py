@@ -20,10 +20,10 @@ EMBEDDING_DIM = 32
 NUM_PATCHES = (GRID_SIZE // PATCH_SIZE) ** 2  # 16 patches
 
 # Training hyperparameters
-TRAINING_SAMPLES = 500
-EPOCHS = 500
+TRAINING_SAMPLES = 50000
+EPOCHS = 200
 LEARNING_RATE = 0.05
-BATCH_SIZE = 50  # Larger batches for better vectorization
+BATCH_SIZE = 100  # Larger batches for better vectorization
 
 
 class SimpleViT:
