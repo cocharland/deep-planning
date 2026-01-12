@@ -58,6 +58,7 @@ Visit the live demo: [https://YOUR-USERNAME.github.io/deep-planning/](https://YO
 2. **[A* Algorithm](astar.html)** - Heuristic-based pathfinding with multiple heuristic options
 3. **[Transformers & ViT](transformers.html)** - Educational guide to transformer architecture and Vision Transformers
 4. **[ViT Path Planner](vit-planner.html)** - Train a Vision Transformer to learn path planning
+5. **[ViT Explainer](vit-explainer.html)** - Interactive step-by-step visualization of how ViT processes grids ⭐ NEW!
 
 ## Technologies
 
@@ -156,6 +157,76 @@ This interactive demo shows how a Vision Transformer can learn to perform path p
 - Educational example of learning vs classical algorithms
 
 This is a simplified implementation for educational purposes. Production models would use proper backpropagation, layer normalization, multiple transformer blocks, and more sophisticated training techniques.
+
+### ViT Explainer (Interactive Architecture Visualization) ⭐ NEW!
+
+An educational tool that provides **step-by-step visualization** of how Vision Transformers process grid data.
+
+**Features:**
+1. **Interactive Grid Drawing**
+   - Draw walls, set start/goal positions
+   - Multiple drawing modes (wall, start, goal, erase)
+   - Random maze generation
+   - Real-time visual feedback
+
+2. **Architecture Flow Visualization**
+   - Step-by-step breakdown of data transformations
+   - Dimension annotations at each stage
+   - Clear explanations of each layer
+   - Visual arrows showing data flow through the network
+
+3. **Patch Analysis**
+   - 16 mini-grids showing individual patches
+   - Hover to highlight patches on the main grid
+   - Simulated embedding visualizations
+   - Interactive patch exploration
+
+4. **Real-time Statistics**
+   - Grid metrics (cells, walls, patches)
+   - Prediction confidence scores
+   - Visual feedback during analysis
+
+**Educational Value:**
+- Perfect for understanding how ViT processes spatial data
+- See exactly how patches are extracted and embedded
+- Understand the transformation from input to output
+- Interactive learning experience
+
+**Best used alongside** the ViT Path Planner to understand both the architecture and the training process.
+
+## GPU-Accelerated Training 🚀
+
+For serious experimentation, this repository includes **PyTorch training scripts** that leverage GPU acceleration:
+
+**Training System:**
+- **`train-expert-fast.py`** - GPU-accelerated training with PyTorch + MPS
+- Trains on 5 million samples over 100 epochs
+- Uses Metal Performance Shaders (MPS) for Apple Silicon GPU
+- Achieves ~26,000 samples/second throughput
+- Exports trained weights to JSON for browser deployment
+
+**Quick Start:**
+```bash
+# Install dependencies
+pip3 install torch torchvision numpy
+
+# Test GPU setup
+python3 test-gpu.py
+
+# Quick validation test
+python3 test-training-small.py
+
+# Full training (5-6 hours)
+python3 train-expert-fast.py
+```
+
+**Training Results:**
+- Loss decreases from 0.28 → 0.06 in first 20 epochs
+- Consistent improvement with Adam optimizer (LR: 0.001)
+- Gradient clipping for training stability
+- Real-time loss monitoring with improvement indicators
+
+See **[TRAINING_FIXES.md](TRAINING_FIXES.md)** for detailed information about training optimizations and GPU acceleration.
 
 ## Future Content
 

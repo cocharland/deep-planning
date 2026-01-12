@@ -1,0 +1,868 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vision Transformer Path Planner - Interactive Explainer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 {
+            text-align: center;
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 40px;
+            font-size: 1.1em;
+        }
+
+        .main-layout {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            margin-bottom: 40px;
+        }
+
+        .section {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 15px;
+            border: 2px solid #e9ecef;
+        }
+
+        .section h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .step-indicator {
+            background: #667eea;
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9em;
+            font-weight: bold;
+        }
+
+        .grid-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(16, 25px);
+            grid-template-rows: repeat(16, 25px);
+            gap: 1px;
+            background: #ddd;
+            border: 2px solid #667eea;
+            cursor: crosshair;
+        }
+
+        .cell {
+            background: white;
+            transition: all 0.2s;
+        }
+
+        .cell:hover {
+            opacity: 0.8;
+        }
+
+        .cell.wall {
+            background: #2c3e50;
+        }
+
+        .cell.start {
+            background: #27ae60;
+            position: relative;
+        }
+
+        .cell.start::after {
+            content: 'S';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .cell.goal {
+            background: #e74c3c;
+            position: relative;
+        }
+
+        .cell.goal::after {
+            content: 'G';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .cell.path {
+            background: #3498db;
+        }
+
+        .cell.prediction {
+            background: rgba(52, 152, 219, 0.4);
+        }
+
+        .cell.patch-highlight {
+            outline: 3px solid #f39c12;
+            outline-offset: -2px;
+            z-index: 10;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: all 0.2s;
+            font-weight: 500;
+        }
+
+        .btn:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn.secondary {
+            background: #95a5a6;
+        }
+
+        .btn.secondary:hover {
+            background: #7f8c8d;
+        }
+
+        .patch-viz {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .patch-item {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            border: 2px solid #e9ecef;
+            transition: all 0.3s;
+        }
+
+        .patch-item:hover {
+            border-color: #667eea;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+        }
+
+        .patch-item.active {
+            border-color: #f39c12;
+            background: #fff9e6;
+        }
+
+        .patch-label {
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 8px;
+            font-size: 0.9em;
+        }
+
+        .mini-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 15px);
+            grid-template-rows: repeat(4, 15px);
+            gap: 1px;
+            background: #ddd;
+            margin-bottom: 8px;
+        }
+
+        .mini-cell {
+            background: white;
+        }
+
+        .mini-cell.wall {
+            background: #2c3e50;
+        }
+
+        .mini-cell.start {
+            background: #27ae60;
+        }
+
+        .mini-cell.goal {
+            background: #e74c3c;
+        }
+
+        .embedding-viz {
+            display: flex;
+            gap: 5px;
+            height: 30px;
+            align-items: flex-end;
+        }
+
+        .embedding-bar {
+            flex: 1;
+            background: linear-gradient(to top, #667eea, #764ba2);
+            border-radius: 2px;
+            transition: all 0.3s;
+        }
+
+        .info-box {
+            background: #e8f4f8;
+            border-left: 4px solid #3498db;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+        }
+
+        .info-box h3 {
+            color: #2980b9;
+            margin-bottom: 8px;
+            font-size: 1.1em;
+        }
+
+        .info-box p {
+            color: #555;
+            line-height: 1.6;
+            margin-bottom: 8px;
+        }
+
+        .architecture-flow {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .flow-step {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+            position: relative;
+        }
+
+        .flow-step::after {
+            content: '↓';
+            position: absolute;
+            left: 50%;
+            bottom: -20px;
+            transform: translateX(-50%);
+            font-size: 24px;
+            color: #667eea;
+        }
+
+        .flow-step:last-child::after {
+            display: none;
+        }
+
+        .flow-step h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+
+        .flow-step .dims {
+            display: inline-block;
+            background: #f0f4ff;
+            padding: 4px 12px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .flow-step p {
+            color: #555;
+            line-height: 1.6;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            border: 2px solid #e9ecef;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .mode-selector {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        .mode-btn {
+            padding: 8px 16px;
+            background: #e9ecef;
+            color: #495057;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: all 0.2s;
+        }
+
+        .mode-btn.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .legend {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-top: 15px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+        }
+
+        .legend-label {
+            font-size: 0.9em;
+            color: #555;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        .processing {
+            animation: pulse 1s infinite;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔮 Vision Transformer Path Planner</h1>
+        <p class="subtitle">Interactive Explainer - See How ViT Processes Your Grid</p>
+
+        <div class="main-layout">
+            <!-- Left Side: Interactive Grid -->
+            <div class="section">
+                <h2>
+                    <span class="step-indicator">1</span>
+                    Interactive Grid Input
+                </h2>
+
+                <div class="mode-selector">
+                    <button class="mode-btn active" data-mode="wall">🧱 Draw Walls</button>
+                    <button class="mode-btn" data-mode="start">🟢 Set Start</button>
+                    <button class="mode-btn" data-mode="goal">🔴 Set Goal</button>
+                    <button class="mode-btn" data-mode="erase">⚪ Erase</button>
+                </div>
+
+                <div class="grid-container">
+                    <div class="grid" id="mainGrid"></div>
+
+                    <div class="controls">
+                        <button class="btn" id="analyzeBtn">🔍 Analyze with ViT</button>
+                        <button class="btn secondary" id="clearBtn">🗑️ Clear Grid</button>
+                        <button class="btn secondary" id="randomBtn">🎲 Random Maze</button>
+                    </div>
+
+                    <div class="legend">
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: #2c3e50;"></div>
+                            <span class="legend-label">Wall</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: #27ae60;"></div>
+                            <span class="legend-label">Start</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: #e74c3c;"></div>
+                            <span class="legend-label">Goal</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: rgba(52, 152, 219, 0.4);"></div>
+                            <span class="legend-label">Prediction</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="info-box">
+                    <h3>📋 How to Use</h3>
+                    <p><strong>1.</strong> Select a drawing mode (walls, start, goal, or erase)</p>
+                    <p><strong>2.</strong> Click on the grid to draw</p>
+                    <p><strong>3.</strong> Click "Analyze with ViT" to see how the model processes your grid</p>
+                    <p><strong>4.</strong> Hover over patches below to highlight them on the grid</p>
+                </div>
+            </div>
+
+            <!-- Right Side: Architecture Flow -->
+            <div class="section">
+                <h2>
+                    <span class="step-indicator">2</span>
+                    ViT Architecture Flow
+                </h2>
+
+                <div class="architecture-flow">
+                    <div class="flow-step">
+                        <h3>🖼️ Input Grid</h3>
+                        <span class="dims">[16 × 16 × 4]</span>
+                        <p>
+                            Grid with 4 channels: <strong>Wall</strong>, <strong>Start</strong>,
+                            <strong>Goal</strong>, and <strong>Empty</strong>. Each cell encodes
+                            the environment state.
+                        </p>
+                    </div>
+
+                    <div class="flow-step">
+                        <h3>🔪 Patch Extraction</h3>
+                        <span class="dims">[16 patches] × [4 × 4 × 4]</span>
+                        <p>
+                            Grid is divided into 4×4 patches. Each patch contains 16 cells with
+                            4 channels = 64 values total. This is like how ViT processes image patches.
+                        </p>
+                    </div>
+
+                    <div class="flow-step">
+                        <h3>🎯 Patch Embedding</h3>
+                        <span class="dims">[16 patches] × [32 dims]</span>
+                        <p>
+                            Each 64-value patch is projected into a 32-dimensional embedding space
+                            using a learned linear transformation. This creates semantic representations.
+                        </p>
+                    </div>
+
+                    <div class="flow-step">
+                        <h3>🔄 Average Pooling</h3>
+                        <span class="dims">[32 dims]</span>
+                        <p>
+                            All 16 patch embeddings are averaged together to create a single
+                            global representation of the entire grid. This captures overall structure.
+                        </p>
+                    </div>
+
+                    <div class="flow-step">
+                        <h3>⚡ Dense Layer + ReLU</h3>
+                        <span class="dims">[256 dims]</span>
+                        <p>
+                            The global embedding is passed through a dense layer with ReLU activation,
+                            expanding to 256 dimensions for richer feature representation.
+                        </p>
+                    </div>
+
+                    <div class="flow-step">
+                        <h3>📤 Output Layer + Sigmoid</h3>
+                        <span class="dims">[256 values] → [0, 1]</span>
+                        <p>
+                            Final layer maps to 256 outputs (16×16 grid). Sigmoid activation converts
+                            to probabilities: high values = likely path cells.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom Section: Patch Visualization -->
+        <div class="section">
+            <h2>
+                <span class="step-indicator">3</span>
+                Patch Analysis (Hover to Highlight)
+            </h2>
+
+            <div class="patch-viz" id="patchViz"></div>
+
+            <div class="stats" id="statsPanel" style="display: none;">
+                <div class="stat-card">
+                    <div class="stat-value" id="totalCells">256</div>
+                    <div class="stat-label">Total Cells</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="wallCount">0</div>
+                    <div class="stat-label">Wall Cells</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="patchCount">16</div>
+                    <div class="stat-label">Patches</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="predictionConf">0%</div>
+                    <div class="stat-label">Avg Confidence</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const GRID_SIZE = 16;
+        const PATCH_SIZE = 4;
+        const NUM_PATCHES = (GRID_SIZE / PATCH_SIZE) ** 2;
+
+        // State
+        let drawMode = 'wall';
+        let isDrawing = false;
+        let gridState = Array(GRID_SIZE).fill(null).map(() => Array(GRID_SIZE).fill('empty'));
+        let startPos = null;
+        let goalPos = null;
+
+        // Initialize grid
+        const mainGrid = document.getElementById('mainGrid');
+        const cells = [];
+
+        for (let row = 0; row < GRID_SIZE; row++) {
+            cells[row] = [];
+            for (let col = 0; col < GRID_SIZE; col++) {
+                const cell = document.createElement('div');
+                cell.className = 'cell';
+                cell.dataset.row = row;
+                cell.dataset.col = col;
+
+                cell.addEventListener('mousedown', () => {
+                    isDrawing = true;
+                    handleCellClick(row, col);
+                });
+
+                cell.addEventListener('mouseenter', () => {
+                    if (isDrawing) handleCellClick(row, col);
+                });
+
+                mainGrid.appendChild(cell);
+                cells[row][col] = cell;
+            }
+        }
+
+        document.addEventListener('mouseup', () => {
+            isDrawing = false;
+        });
+
+        // Mode selection
+        document.querySelectorAll('.mode-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                drawMode = btn.dataset.mode;
+            });
+        });
+
+        function handleCellClick(row, col) {
+            if (drawMode === 'wall') {
+                if (gridState[row][col] === 'empty') {
+                    setCell(row, col, 'wall');
+                }
+            } else if (drawMode === 'erase') {
+                setCell(row, col, 'empty');
+            } else if (drawMode === 'start') {
+                if (startPos) {
+                    setCell(startPos.row, startPos.col, 'empty');
+                }
+                setCell(row, col, 'start');
+                startPos = {row, col};
+            } else if (drawMode === 'goal') {
+                if (goalPos) {
+                    setCell(goalPos.row, goalPos.col, 'empty');
+                }
+                setCell(row, col, 'goal');
+                goalPos = {row, col};
+            }
+        }
+
+        function setCell(row, col, type) {
+            gridState[row][col] = type;
+            cells[row][col].className = 'cell';
+            if (type !== 'empty') {
+                cells[row][col].classList.add(type);
+            }
+        }
+
+        // Clear grid
+        document.getElementById('clearBtn').addEventListener('click', () => {
+            for (let row = 0; row < GRID_SIZE; row++) {
+                for (let col = 0; col < GRID_SIZE; col++) {
+                    setCell(row, col, 'empty');
+                }
+            }
+            startPos = null;
+            goalPos = null;
+            document.getElementById('statsPanel').style.display = 'none';
+        });
+
+        // Random maze
+        document.getElementById('randomBtn').addEventListener('click', () => {
+            // Clear first
+            for (let row = 0; row < GRID_SIZE; row++) {
+                for (let col = 0; col < GRID_SIZE; col++) {
+                    setCell(row, col, 'empty');
+                }
+            }
+
+            // Add random walls
+            for (let row = 0; row < GRID_SIZE; row++) {
+                for (let col = 0; col < GRID_SIZE; col++) {
+                    if (Math.random() < 0.25) {
+                        setCell(row, col, 'wall');
+                    }
+                }
+            }
+
+            // Set random start and goal
+            const emptyCells = [];
+            for (let row = 0; row < GRID_SIZE; row++) {
+                for (let col = 0; col < GRID_SIZE; col++) {
+                    if (gridState[row][col] === 'empty') {
+                        emptyCells.push({row, col});
+                    }
+                }
+            }
+
+            if (emptyCells.length >= 2) {
+                const start = emptyCells[Math.floor(Math.random() * emptyCells.length)];
+                setCell(start.row, start.col, 'start');
+                startPos = start;
+
+                const goalCandidates = emptyCells.filter(c => c.row !== start.row || c.col !== start.col);
+                const goal = goalCandidates[Math.floor(Math.random() * goalCandidates.length)];
+                setCell(goal.row, goal.col, 'goal');
+                goalPos = goal;
+            }
+        });
+
+        // Initialize patch visualization
+        function initPatchViz() {
+            const patchViz = document.getElementById('patchViz');
+            patchViz.innerHTML = '';
+
+            for (let patchIdx = 0; patchIdx < NUM_PATCHES; patchIdx++) {
+                const patchRow = Math.floor(patchIdx / 4);
+                const patchCol = patchIdx % 4;
+
+                const patchItem = document.createElement('div');
+                patchItem.className = 'patch-item';
+                patchItem.dataset.patchIdx = patchIdx;
+
+                const label = document.createElement('div');
+                label.className = 'patch-label';
+                label.textContent = `Patch ${patchIdx} [${patchRow},${patchCol}]`;
+
+                const miniGrid = document.createElement('div');
+                miniGrid.className = 'mini-grid';
+
+                for (let i = 0; i < PATCH_SIZE; i++) {
+                    for (let j = 0; j < PATCH_SIZE; j++) {
+                        const miniCell = document.createElement('div');
+                        miniCell.className = 'mini-cell';
+                        miniGrid.appendChild(miniCell);
+                    }
+                }
+
+                const embeddingViz = document.createElement('div');
+                embeddingViz.className = 'embedding-viz';
+                for (let i = 0; i < 8; i++) {
+                    const bar = document.createElement('div');
+                    bar.className = 'embedding-bar';
+                    bar.style.height = '0%';
+                    embeddingViz.appendChild(bar);
+                }
+
+                patchItem.appendChild(label);
+                patchItem.appendChild(miniGrid);
+                patchItem.appendChild(embeddingViz);
+
+                // Hover to highlight
+                patchItem.addEventListener('mouseenter', () => {
+                    highlightPatch(patchIdx);
+                    patchItem.classList.add('active');
+                });
+
+                patchItem.addEventListener('mouseleave', () => {
+                    unhighlightAllPatches();
+                    patchItem.classList.remove('active');
+                });
+
+                patchViz.appendChild(patchItem);
+            }
+        }
+
+        function highlightPatch(patchIdx) {
+            const patchRow = Math.floor(patchIdx / 4);
+            const patchCol = patchIdx % 4;
+
+            for (let i = 0; i < PATCH_SIZE; i++) {
+                for (let j = 0; j < PATCH_SIZE; j++) {
+                    const row = patchRow * PATCH_SIZE + i;
+                    const col = patchCol * PATCH_SIZE + j;
+                    cells[row][col].classList.add('patch-highlight');
+                }
+            }
+        }
+
+        function unhighlightAllPatches() {
+            for (let row = 0; row < GRID_SIZE; row++) {
+                for (let col = 0; col < GRID_SIZE; col++) {
+                    cells[row][col].classList.remove('patch-highlight');
+                }
+            }
+        }
+
+        // Update patch visualization
+        function updatePatchViz() {
+            for (let patchIdx = 0; patchIdx < NUM_PATCHES; patchIdx++) {
+                const patchRow = Math.floor(patchIdx / 4);
+                const patchCol = patchIdx % 4;
+
+                const patchItem = document.querySelector(`[data-patch-idx="${patchIdx}"]`);
+                const miniCells = patchItem.querySelectorAll('.mini-cell');
+
+                let cellIdx = 0;
+                for (let i = 0; i < PATCH_SIZE; i++) {
+                    for (let j = 0; j < PATCH_SIZE; j++) {
+                        const row = patchRow * PATCH_SIZE + i;
+                        const col = patchCol * PATCH_SIZE + j;
+                        const state = gridState[row][col];
+
+                        miniCells[cellIdx].className = 'mini-cell';
+                        if (state !== 'empty') {
+                            miniCells[cellIdx].classList.add(state);
+                        }
+                        cellIdx++;
+                    }
+                }
+
+                // Animate embedding bars with random values (simulated)
+                const bars = patchItem.querySelectorAll('.embedding-bar');
+                bars.forEach(bar => {
+                    const height = Math.random() * 100;
+                    bar.style.height = height + '%';
+                });
+            }
+        }
+
+        // Analyze with ViT
+        document.getElementById('analyzeBtn').addEventListener('click', () => {
+            if (!startPos || !goalPos) {
+                alert('Please set both start and goal positions!');
+                return;
+            }
+
+            // Update patch visualization
+            updatePatchViz();
+
+            // Show stats
+            const statsPanel = document.getElementById('statsPanel');
+            statsPanel.style.display = 'grid';
+
+            let wallCount = 0;
+            for (let row = 0; row < GRID_SIZE; row++) {
+                for (let col = 0; col < GRID_SIZE; col++) {
+                    if (gridState[row][col] === 'wall') wallCount++;
+                }
+            }
+
+            document.getElementById('wallCount').textContent = wallCount;
+
+            // Simulate prediction (random for demo)
+            for (let row = 0; row < GRID_SIZE; row++) {
+                for (let col = 0; col < GRID_SIZE; col++) {
+                    if (gridState[row][col] === 'empty') {
+                        const prob = Math.random();
+                        if (prob > 0.7) {
+                            cells[row][col].classList.add('prediction');
+                        }
+                    }
+                }
+            }
+
+            document.getElementById('predictionConf').textContent =
+                (Math.random() * 40 + 60).toFixed(1) + '%';
+
+            // Animate
+            const analyzeBtn = document.getElementById('analyzeBtn');
+            analyzeBtn.classList.add('processing');
+            setTimeout(() => {
+                analyzeBtn.classList.remove('processing');
+            }, 1000);
+        });
+
+        // Initialize
+        initPatchViz();
+    </script>
+</body>
+</html>

@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 
 """
-Fast Expert ViT Path Planning Model Training with NumPy
+Fast Expert ViT Path Planning Model Training with GPU Acceleration
 
-This optimized version uses NumPy for vectorized operations, making it much faster.
+This optimized version uses PyTorch with MPS (Metal Performance Shaders) for GPU acceleration on macOS.
 
 Usage: python3 train-expert-fast.py
 """
@@ -12,6 +12,9 @@ import json
 import random
 import time
 import numpy as np
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
 
 # Model hyperparameters (must match vit-planner.html)
 GRID_SIZE = 16
@@ -20,80 +23,82 @@ EMBEDDING_DIM = 32
 NUM_PATCHES = (GRID_SIZE // PATCH_SIZE) ** 2  # 16 patches
 
 # Training hyperparameters
-TRAINING_SAMPLES = 50000
-EPOCHS = 200
-LEARNING_RATE = 0.05
-BATCH_SIZE = 100  # Larger batches for better vectorization
+TRAINING_SAMPLES = 5000000  # 5 million samples for comprehensive training
+EPOCHS = 100  # Reduced epochs since we have much more data
+LEARNING_RATE = 0.001  # Lower LR for stable training with Adam
+BATCH_SIZE = 2048  # Much larger batches for GPU
+
+# Device will be set in main()
+DEVICE = None
 
 
-class SimpleViT:
-    """Simplified Vision Transformer with NumPy acceleration"""
+class SimpleViT(nn.Module):
+    """Simplified Vision Transformer with GPU acceleration"""
 
     def __init__(self):
+        super(SimpleViT, self).__init__()
+
+        # Patch embedding layer
+        patch_dim = PATCH_SIZE * PATCH_SIZE * 4
+        self.patch_embedding = nn.Linear(patch_dim, EMBEDDING_DIM)
+
+        # Attention weights (not used in forward but kept for compatibility)
+        self.wq = nn.Linear(EMBEDDING_DIM, EMBEDDING_DIM)
+        self.wk = nn.Linear(EMBEDDING_DIM, EMBEDDING_DIM)
+        self.wv = nn.Linear(EMBEDDING_DIM, EMBEDDING_DIM)
+
+        # Dense and output layers
+        self.dense = nn.Linear(EMBEDDING_DIM, 256)
+        self.output = nn.Linear(256, GRID_SIZE * GRID_SIZE)
+
         # Initialize weights with He initialization
-        scale_embed = np.sqrt(2.0 / (PATCH_SIZE * PATCH_SIZE * 4))
-        self.patch_embedding = np.random.randn(PATCH_SIZE * PATCH_SIZE * 4, EMBEDDING_DIM) * scale_embed
-
-        scale_attn = np.sqrt(2.0 / EMBEDDING_DIM)
-        self.attention = {
-            'wq': np.random.randn(EMBEDDING_DIM, EMBEDDING_DIM) * scale_attn,
-            'wk': np.random.randn(EMBEDDING_DIM, EMBEDDING_DIM) * scale_attn,
-            'wv': np.random.randn(EMBEDDING_DIM, EMBEDDING_DIM) * scale_attn
-        }
-
-        scale_dense = np.sqrt(2.0 / EMBEDDING_DIM)
-        self.dense = np.random.randn(EMBEDDING_DIM, 256) * scale_dense
-
-        scale_output = np.sqrt(2.0 / 256)
-        self.output = np.random.randn(256, GRID_SIZE * GRID_SIZE) * scale_output
+        nn.init.kaiming_normal_(self.patch_embedding.weight)
+        nn.init.kaiming_normal_(self.dense.weight)
+        nn.init.kaiming_normal_(self.output.weight)
 
     def extract_patches(self, input_grid):
-        """Extract patches from input grid - vectorized"""
-        patches = []
+        """Extract patches from input grid - works with batches"""
+        batch_size = input_grid.shape[0]
         patches_per_side = GRID_SIZE // PATCH_SIZE
+        num_patches = patches_per_side * patches_per_side
+        patch_dim = PATCH_SIZE * PATCH_SIZE * 4
 
+        patches = torch.zeros(batch_size, num_patches, patch_dim, device=input_grid.device)
+
+        patch_idx = 0
         for p_row in range(patches_per_side):
             for p_col in range(patches_per_side):
-                patch = []
-                for i in range(PATCH_SIZE):
-                    for j in range(PATCH_SIZE):
-                        row = p_row * PATCH_SIZE + i
-                        col = p_col * PATCH_SIZE + j
-                        patch.extend(input_grid[row, col])
-                patches.append(patch)
+                # Extract patch for all batches at once
+                row_start = p_row * PATCH_SIZE
+                row_end = row_start + PATCH_SIZE
+                col_start = p_col * PATCH_SIZE
+                col_end = col_start + PATCH_SIZE
 
-        return np.array(patches)
+                patch = input_grid[:, row_start:row_end, col_start:col_end, :]
+                # Flatten the patch: [batch, patch_h, patch_w, channels] -> [batch, patch_dim]
+                patches[:, patch_idx, :] = patch.reshape(batch_size, -1)
+                patch_idx += 1
+
+        return patches
 
     def forward(self, input_grid):
-        """Forward pass - vectorized with NumPy"""
-        # Extract patches
-        patches = self.extract_patches(input_grid)  # [num_patches, patch_dim]
+        """Forward pass - fully batched and GPU accelerated"""
+        # Extract patches: [batch, num_patches, patch_dim]
+        patches = self.extract_patches(input_grid)
 
-        # Embed patches: patches @ patch_embedding
-        embedded = patches @ self.patch_embedding  # [num_patches, embedding_dim]
+        # Embed patches: [batch, num_patches, embedding_dim]
+        embedded = self.patch_embedding(patches)
 
-        # Simple self-attention (averaged)
-        avg_embedding = np.mean(embedded, axis=0)  # [embedding_dim]
+        # Average pooling over patches: [batch, embedding_dim]
+        avg_embedding = embedded.mean(dim=1)
 
-        # Dense layer with ReLU
-        dense_out = avg_embedding @ self.dense  # [256]
-        dense_out = np.maximum(0, dense_out)  # ReLU
+        # Dense layer with ReLU: [batch, 256]
+        dense_out = F.relu(self.dense(avg_embedding))
 
-        # Output layer with sigmoid
-        output = dense_out @ self.output  # [grid_size * grid_size]
-        output = 1 / (1 + np.exp(-np.clip(output, -20, 20)))  # Sigmoid with clipping
+        # Output layer with sigmoid: [batch, grid_size * grid_size]
+        output = torch.sigmoid(self.output(dense_out))
 
         return output
-
-    def forward_batch(self, input_batch):
-        """Forward pass for a batch of inputs"""
-        batch_size = len(input_batch)
-        outputs = np.zeros((batch_size, GRID_SIZE * GRID_SIZE))
-
-        for i, input_grid in enumerate(input_batch):
-            outputs[i] = self.forward(input_grid)
-
-        return outputs
 
 
 def heuristic(a, b):
@@ -204,9 +209,10 @@ def generate_random_sample():
 
 
 def train():
-    """Train the expert model with NumPy acceleration"""
-    print('=== Training Expert ViT Path Planning Model (NumPy Accelerated) ===\n')
+    """Train the expert model with GPU acceleration"""
+    print('=== Training Expert ViT Path Planning Model (GPU Accelerated) ===\n')
     print('Configuration:')
+    print(f'  Device: {DEVICE}')
     print(f'  Grid size: {GRID_SIZE}x{GRID_SIZE}')
     print(f'  Patch size: {PATCH_SIZE}x{PATCH_SIZE}')
     print(f'  Embedding dim: {EMBEDDING_DIM}')
@@ -222,88 +228,83 @@ def train():
 
     for i in range(TRAINING_SAMPLES):
         training_data.append(generate_random_sample())
-        if (i + 1) % 100 == 0:
+        if (i + 1) % 10000 == 0:
             elapsed = time.time() - gen_start
-            print(f'  Generated {i + 1}/{TRAINING_SAMPLES} samples ({elapsed:.1f}s)')
+            rate = (i + 1) / elapsed
+            eta = (TRAINING_SAMPLES - i - 1) / rate
+            print(f'  Generated {i + 1}/{TRAINING_SAMPLES} samples ({elapsed:.1f}s, ETA: {eta:.1f}s)')
 
     gen_time = time.time() - gen_start
     print(f'✓ Training data ready in {gen_time:.1f}s\n')
 
-    # Initialize model
+    # Initialize model and move to device
     print('Initializing model...')
-    model = SimpleViT()
+    model = SimpleViT().to(DEVICE)
     print('✓ Model initialized\n')
+
+    # Set up optimizer and loss function
+    optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
+    criterion = nn.MSELoss()
+
+    # Convert training data to tensors
+    print('Converting data to tensors...')
+    inputs = torch.tensor(np.array([sample['input'] for sample in training_data]), dtype=torch.float32)
+    outputs = torch.tensor(np.array([sample['output'] for sample in training_data]), dtype=torch.float32)
+    print(f'✓ Data converted (inputs: {inputs.shape}, outputs: {outputs.shape})\n')
 
     # Training loop
     print('Training...')
     train_start = time.time()
-
-    # Pre-extract all inputs and outputs for faster access
-    inputs = np.array([sample['input'] for sample in training_data])
-    outputs = np.array([sample['output'] for sample in training_data])
+    best_loss = float('inf')
 
     for epoch in range(EPOCHS):
         epoch_loss = 0
         num_batches = 0
 
         # Shuffle data each epoch
-        indices = np.random.permutation(TRAINING_SAMPLES)
+        indices = torch.randperm(TRAINING_SAMPLES)
 
         # Process in batches
         for batch_start in range(0, TRAINING_SAMPLES, BATCH_SIZE):
             batch_end = min(batch_start + BATCH_SIZE, TRAINING_SAMPLES)
             batch_indices = indices[batch_start:batch_end]
-            batch_size = len(batch_indices)
 
-            batch_inputs = inputs[batch_indices]
-            batch_outputs = outputs[batch_indices]
+            # Move batch to device
+            batch_inputs = inputs[batch_indices].to(DEVICE)
+            batch_targets = outputs[batch_indices].to(DEVICE)
 
-            # Accumulate gradients over batch
-            output_grad = np.zeros_like(model.output)
-            dense_grad = np.zeros_like(model.dense)
+            # Forward pass
+            predictions = model(batch_inputs)
 
-            batch_loss = 0
+            # Compute loss
+            loss = criterion(predictions, batch_targets)
 
-            for i in range(batch_size):
-                predicted = model.forward(batch_inputs[i])
-                target = batch_outputs[i]
+            # Backward pass
+            optimizer.zero_grad()
+            loss.backward()
 
-                # MSE loss
-                loss = np.mean((predicted - target) ** 2)
-                batch_loss += loss
+            # Gradient clipping for stability
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
 
-                # Gradient
-                gradient = 2 * (predicted - target) / len(predicted)
+            optimizer.step()
 
-                # Accumulate gradients (simplified - only updating output and dense layers)
-                # Get intermediate activations for backprop
-                patches = model.extract_patches(batch_inputs[i])
-                embedded = patches @ model.patch_embedding
-                avg_embedding = np.mean(embedded, axis=0)
-                dense_out = avg_embedding @ model.dense
-                dense_out_relu = np.maximum(0, dense_out)
-
-                # Output layer gradient
-                output_grad += np.outer(dense_out_relu, gradient)
-
-                # Dense layer gradient (through ReLU)
-                dense_upstream = gradient @ model.output.T
-                dense_upstream *= (dense_out > 0)  # ReLU derivative
-                dense_grad += np.outer(avg_embedding, dense_upstream)
-
-            # Update weights with averaged gradients
-            model.output -= LEARNING_RATE * output_grad / batch_size
-            model.dense -= LEARNING_RATE * dense_grad / batch_size * 0.1  # Lower LR for earlier layers
-
-            epoch_loss += batch_loss
+            epoch_loss += loss.item() * len(batch_indices)
             num_batches += 1
 
         avg_loss = epoch_loss / TRAINING_SAMPLES
 
-        if (epoch + 1) % 10 == 0:
+        # Track improvement
+        if avg_loss < best_loss:
+            best_loss = avg_loss
+            improvement = "↓"
+        else:
+            improvement = " "
+
+        # More frequent logging at the start, then every 10
+        if epoch < 5 or (epoch + 1) % 10 == 0:
             elapsed = time.time() - train_start
             samples_per_sec = (epoch + 1) * TRAINING_SAMPLES / elapsed
-            print(f'  Epoch {epoch + 1}/{EPOCHS} - Loss: {avg_loss:.6f} - Time: {elapsed:.1f}s - {samples_per_sec:.0f} samples/s')
+            print(f'  Epoch {epoch + 1:3d}/{EPOCHS} - Loss: {avg_loss:.6f} {improvement} - Time: {elapsed:.1f}s - {samples_per_sec:.0f} samples/s')
 
     total_time = time.time() - train_start
     print(f'\n✓ Training complete in {total_time:.1f}s\n')
@@ -316,15 +317,19 @@ def export_weights(model, filename):
     """Export model weights to JSON"""
     print('Exporting model weights...')
 
+    # Move model to CPU for export
+    model = model.cpu()
+
+    # Extract weights from PyTorch model
     weights = {
-        'patchEmbedding': model.patch_embedding.tolist(),
+        'patchEmbedding': model.patch_embedding.weight.detach().numpy().T.tolist(),  # Transpose for compatibility
         'attention': {
-            'wq': model.attention['wq'].tolist(),
-            'wk': model.attention['wk'].tolist(),
-            'wv': model.attention['wv'].tolist()
+            'wq': model.wq.weight.detach().numpy().T.tolist(),
+            'wk': model.wk.weight.detach().numpy().T.tolist(),
+            'wv': model.wv.weight.detach().numpy().T.tolist()
         },
-        'dense': model.dense.tolist(),
-        'output': model.output.tolist(),
+        'dense': model.dense.weight.detach().numpy().T.tolist(),  # Transpose for compatibility
+        'output': model.output.weight.detach().numpy().T.tolist(),  # Transpose for compatibility
         'metadata': {
             'gridSize': GRID_SIZE,
             'patchSize': PATCH_SIZE,
@@ -346,7 +351,23 @@ def export_weights(model, filename):
 
 def main():
     """Main execution"""
+    global DEVICE
+
+    print('PyTorch version:', torch.__version__)
     print('NumPy version:', np.__version__)
+    print('MPS available:', torch.backends.mps.is_available())
+    print()
+
+    # Set up device (use MPS on macOS if available, otherwise CPU)
+    if torch.backends.mps.is_available():
+        DEVICE = torch.device("mps")
+        print("Using Metal Performance Shaders (MPS) GPU acceleration")
+    elif torch.cuda.is_available():
+        DEVICE = torch.device("cuda")
+        print("Using CUDA GPU acceleration")
+    else:
+        DEVICE = torch.device("cpu")
+        print("Using CPU")
     print()
 
     model = train()
